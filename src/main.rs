@@ -1,41 +1,60 @@
-//! Construct a function that does nothing in LLVM IR.
+extern crate peg;
 
 extern crate llvm_sys as llvm;
 
+use std::ffi::CString;
+use std::fs::File;
+use std::io::Read;
 use std::ptr;
 
+peg::parser!( grammar arith() for str {
+   pub rule program() -> String
+        = i:number() "\n"  { i }
+
+     rule number() -> String
+        = n:$(['0'..='9']+) { n.parse().unwrap() }
+});
+
+use self::arith::*;
+
 fn main() {
+    let mut input = String::new();
+    let mut f = File::open("in.ex").unwrap();
+    f.read_to_string(&mut input).unwrap();
+
+    let parsed_input = program(&input).unwrap();
+
     unsafe {
-        // Set up a context, module and builder in that context.
-        let context = llvm::core::LLVMContextCreate();
-        let module = llvm::core::LLVMModuleCreateWithName(b"nop\0".as_ptr() as *const _);
-        let builder = llvm::core::LLVMCreateBuilderInContext(context);
-
-        // Get the type signature for void nop(void);
-        // Then create it in our module.
-        let void = llvm::core::LLVMVoidTypeInContext(context);
-        let function_type = llvm::core::LLVMFunctionType(void, ptr::null_mut(), 0, 0);
-        let function =
-            llvm::core::LLVMAddFunction(module, b"nop\0".as_ptr() as *const _, function_type);
-
-        // Create a basic block in the function and set our builder to generate
-        // code in it.
-        let bb = llvm::core::LLVMAppendBasicBlockInContext(
-            context,
-            function,
-            b"entry\0".as_ptr() as *const _,
-        );
-        llvm::core::LLVMPositionBuilderAtEnd(builder, bb);
-
-        // Emit a `ret void` into the function
-        llvm::core::LLVMBuildRetVoid(builder);
-
-        // Dump the module as IR to stdout.
-        llvm::core::LLVMDumpModule(module);
-
-        // Clean up. Values created in the context mostly get cleaned up there.
-        llvm::core::LLVMDisposeBuilder(builder);
-        llvm::core::LLVMDisposeModule(module);
-        llvm::core::LLVMContextDispose(context);
+        codegen(parsed_input);
     }
+}
+
+unsafe fn codegen(input: String) {
+    let context = llvm::core::LLVMContextCreate();
+    let module = llvm::core::LLVMModuleCreateWithName(b"example_module\0".as_ptr() as *const _);
+    let builder = llvm::core::LLVMCreateBuilderInContext(context);
+
+    // In LLVM, you get your types from functions.
+    let int_type = llvm::core::LLVMInt64TypeInContext(context);
+    let function_type = llvm::core::LLVMFunctionType(int_type, ptr::null_mut(), 0, 0);
+    let function =
+        llvm::core::LLVMAddFunction(module, b"main\0".as_ptr() as *const _, function_type);
+
+    let entry_name = CString::new("entry").unwrap();
+    let bb = llvm::core::LLVMAppendBasicBlockInContext(context, function, entry_name.as_ptr());
+    llvm::core::LLVMPositionBuilderAtEnd(builder, bb);
+
+    // The juicy part: construct a `LLVMValue` from a Rust value:
+    let int_value: u64 = input.parse().unwrap();
+    let int_value = llvm::core::LLVMConstInt(int_type, int_value, 0);
+
+    llvm::core::LLVMBuildRet(builder, int_value);
+
+    // Instead of dumping to stdout, let's write out the IR to `out.ll`
+    let out_file = CString::new("out.ll").unwrap();
+    llvm::core::LLVMPrintModuleToFile(module, out_file.as_ptr(), ptr::null_mut());
+
+    llvm::core::LLVMDisposeBuilder(builder);
+    llvm::core::LLVMDisposeModule(module);
+    llvm::core::LLVMContextDispose(context);
 }
