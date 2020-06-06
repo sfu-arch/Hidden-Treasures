@@ -10,42 +10,89 @@ use std::ptr;
 
 pub enum Expr {
     Literal(String),
-    Ref(String),
+    Identifier(String),
     Assign(String, Box<Expr>),
+    Eq(Box<Expr>, Box<Expr>),
+    Ne(Box<Expr>, Box<Expr>),
+    Lt(Box<Expr>, Box<Expr>),
+    Le(Box<Expr>, Box<Expr>),
+    Gt(Box<Expr>, Box<Expr>),
+    Ge(Box<Expr>, Box<Expr>),
     Add(Box<Expr>, Box<Expr>),
     Sub(Box<Expr>, Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
-    If(Box<Expr>, Vec<Expr>, Vec<Expr>),
+    IfElse(Box<Expr>, Vec<Expr>, Vec<Expr>),
+    WhileLoop(Box<Expr>, Vec<Expr>),
+    Call(String, Vec<Expr>),
+    GlobalDataAddr(String),
 }
 
-peg::parser!( grammar arith() for str {
+peg::parser!( grammar program() for str {
     use super::Expr;
+pub rule statements() -> Vec<Expr>
+        = s:(statement()*) { s }
 
-pub rule program() -> Vec<Expr>
-=  e:(expression() ** ("\n" _)) "\n" { e }
+    rule statement() -> Expr
+        = _ e:expression() _ "\n" { e }
 
+    rule expression() -> Expr
+        = if_else()
+        / while_loop()
+        / assignment()
+        / binary_op()
 
-rule expression() -> Expr
-    = sum()
+    rule if_else() -> Expr
+        = "if" _ e:expression() _ "{" _ "\n"
+        then_body:statements() _ "}" _ "else" _ "{" _ "\n"
+        else_body:statements() _ "}"
+        { Expr::IfElse(Box::new(e), then_body, else_body) }
 
-rule sum() -> Expr
-   = a:number() "+" b:number() { Expr::Add(Box::new(a), Box::new(b)) }
+    rule while_loop() -> Expr
+        = "while" _ e:expression() _ "{" _ "\n"
+        loop_body:statements() _ "}"
+        { Expr::WhileLoop(Box::new(e), loop_body) }
 
- rule number() -> Expr
-    = n:$(['0'..='9']+) { Expr::Literal(n.parse().unwrap()) }
+    rule assignment() -> Expr
+        = i:identifier() _ "=" _ e:expression() {Expr::Assign(i, Box::new(e))}
 
-  rule _() = [' ']*
+    rule binary_op() -> Expr = precedence!{
+        a:@ _ "==" _ b:(@) { Expr::Eq(Box::new(a), Box::new(b)) }
+        a:@ _ "!=" _ b:(@) { Expr::Ne(Box::new(a), Box::new(b)) }
+        a:@ _ "<"  _ b:(@) { Expr::Lt(Box::new(a), Box::new(b)) }
+        a:@ _ "<=" _ b:(@) { Expr::Le(Box::new(a), Box::new(b)) }
+        a:@ _ ">"  _ b:(@) { Expr::Gt(Box::new(a), Box::new(b)) }
+        a:@ _ ">=" _ b:(@) { Expr::Ge(Box::new(a), Box::new(b)) }
+        --
+        a:@ _ "+" _ b:(@) { Expr::Add(Box::new(a), Box::new(b)) }
+        a:@ _ "-" _ b:(@) { Expr::Sub(Box::new(a), Box::new(b)) }
+        --
+        a:@ _ "*" _ b:(@) { Expr::Mul(Box::new(a), Box::new(b)) }
+        a:@ _ "/" _ b:(@) { Expr::Div(Box::new(a), Box::new(b)) }
+        --
+        i:identifier() _ "(" args:((_ e:expression() _ {e}) ** ",") ")" { Expr::Call(i, args) }
+        i:identifier() { Expr::Identifier(i) }
+        l:literal() { l }
+    }
+    rule identifier() -> String
+        = quiet!{ n:$(['a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '0'..='9' | '_']*) { n.to_owned() } }
+        / expected!("identifier")
+
+    rule literal() -> Expr
+        = n:$(['0'..='9']+) { Expr::Literal(n.to_owned()) }
+        / "&" i:identifier() { Expr::GlobalDataAddr(i) }
+
+    rule _() =  quiet!{[' ' | '\t']*}
 });
 
-use self::arith::*;
+use self::program::*;
 
 fn main() {
     let mut input = String::new();
     let mut f = File::open("in.ex").unwrap();
     f.read_to_string(&mut input).unwrap();
 
-    let parsed_input = program(&input).unwrap();
+    let parsed_input = statements(&input).unwrap();
 
     unsafe {
         codegen(parsed_input);
@@ -60,6 +107,7 @@ unsafe fn codegen(input: Vec<Expr>) {
     // In LLVM, you get your types from functions.
     let int_type = llvm::core::LLVMInt64TypeInContext(context);
     let function_type = llvm::core::LLVMFunctionType(int_type, ptr::null_mut(), 0, 0);
+
     let function =
         llvm::core::LLVMAddFunction(module, b"main\0".as_ptr() as *const _, function_type);
 
@@ -77,7 +125,7 @@ unsafe fn codegen(input: Vec<Expr>) {
     for expr in input {
         return_value = codegen_expr(context, builder, function, &mut names, expr);
     }
-    llvm::core(builder, return_value);
+    llvm::core::LLVMBuildRet(builder, return_value);
 
     // Instead of dumping to stdout, let's write out the IR to `out.ll`
     let out_file = CString::new("out.ll").unwrap();
@@ -160,13 +208,6 @@ unsafe fn codegen_expr(
             let name = CString::new("divtmp").unwrap();
             llvm::core::LLVMBuildUDiv(builder, lhs, rhs, name.as_ptr())
         }
-
-        Expr::Ref(name) => {
-            let pointer = names.get(&name).unwrap();
-            let name = CString::new(name).unwrap();
-            llvm::core::LLVMBuildLoad(builder, *pointer, name.as_ptr())
-        }
-
         Expr::Assign(name, expr) => {
             let new_value = codegen_expr(context, builder, func, names, *expr);
             let pointer = names.get(&name).unwrap();
@@ -174,7 +215,13 @@ unsafe fn codegen_expr(
             new_value
         }
 
-        Expr::If(condition, then_body, else_body) => {
+        Expr::Identifier(name) => {
+            let new_reg = CString::new("assigntmp").unwrap();
+            let pointer = names.get(&name).unwrap();
+            llvm::core::LLVMBuildLoad(builder, *pointer, new_reg.as_ptr())
+        }
+
+        Expr::IfElse(condition, then_body, else_body) => {
             let condition_value = codegen_expr(context, builder, func, names, *condition);
             let int_type = llvm::core::LLVMInt64TypeInContext(context);
             let zero = llvm::core::LLVMConstInt(int_type, 0, 0);
@@ -223,6 +270,10 @@ unsafe fn codegen_expr(
 
             llvm::core::LLVMAddIncoming(phi, values.as_mut_ptr(), blocks.as_mut_ptr(), 2);
             phi
+        }
+        _ => {
+            let int_type = llvm::core::LLVMInt64TypeInContext(context);
+            llvm::core::LLVMConstInt(int_type, 0, 0)
         }
     }
 }
