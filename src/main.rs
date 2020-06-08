@@ -24,8 +24,6 @@ pub enum Expr {
     Div(Box<Expr>, Box<Expr>),
     IfElse(Box<Expr>, Vec<Expr>, Vec<Expr>),
     WhileLoop(Box<Expr>, Vec<Expr>),
-    Call(String, Vec<Expr>),
-    GlobalDataAddr(String),
 }
 
 peg::parser!( grammar program() for str {
@@ -161,7 +159,6 @@ unsafe fn insert_allocations(
         names.insert(variable_name.to_owned(), pointer);
     }
 }
-
 // When you write out instructions in LLVM, you get back `LLVMValueRef`s. You
 // can then use these references in other instructions.
 unsafe fn codegen_expr(
@@ -175,6 +172,54 @@ unsafe fn codegen_expr(
         Expr::Literal(int_literal) => {
             let int_type = llvm::core::LLVMInt64TypeInContext(context);
             llvm::core::LLVMConstInt(int_type, int_literal.parse().unwrap(), 0)
+        }
+
+        Expr::Eq(lhs, rhs) => {
+            let lhs = codegen_expr(context, builder, func, names, *lhs);
+            let rhs = codegen_expr(context, builder, func, names, *rhs);
+            let name = CString::new("eqtmp").unwrap();
+            let op = llvm::LLVMIntPredicate::LLVMIntEQ;
+            llvm::core::LLVMBuildICmp(builder, op, lhs, rhs, name.as_ptr())
+        }
+
+        Expr::Ne(lhs, rhs) => {
+            let lhs = codegen_expr(context, builder, func, names, *lhs);
+            let rhs = codegen_expr(context, builder, func, names, *rhs);
+            let name = CString::new("neqtmp").unwrap();
+            let op = llvm::LLVMIntPredicate::LLVMIntNE;
+            llvm::core::LLVMBuildICmp(builder, op, lhs, rhs, name.as_ptr())
+        }
+
+        Expr::Lt(lhs, rhs) => {
+            let lhs = codegen_expr(context, builder, func, names, *lhs);
+            let rhs = codegen_expr(context, builder, func, names, *rhs);
+            let name = CString::new("lttmp").unwrap();
+            let op = llvm::LLVMIntPredicate::LLVMIntSLT;
+            llvm::core::LLVMBuildICmp(builder, op, lhs, rhs, name.as_ptr())
+        }
+
+        Expr::Le(lhs, rhs) => {
+            let lhs = codegen_expr(context, builder, func, names, *lhs);
+            let rhs = codegen_expr(context, builder, func, names, *rhs);
+            let name = CString::new("lttmp").unwrap();
+            let op = llvm::LLVMIntPredicate::LLVMIntSLE;
+            llvm::core::LLVMBuildICmp(builder, op, lhs, rhs, name.as_ptr())
+        }
+
+        Expr::Gt(lhs, rhs) => {
+            let lhs = codegen_expr(context, builder, func, names, *lhs);
+            let rhs = codegen_expr(context, builder, func, names, *rhs);
+            let name = CString::new("lttmp").unwrap();
+            let op = llvm::LLVMIntPredicate::LLVMIntSGT;
+            llvm::core::LLVMBuildICmp(builder, op, lhs, rhs, name.as_ptr())
+        }
+
+        Expr::Ge(lhs, rhs) => {
+            let lhs = codegen_expr(context, builder, func, names, *lhs);
+            let rhs = codegen_expr(context, builder, func, names, *rhs);
+            let name = CString::new("lttmp").unwrap();
+            let op = llvm::LLVMIntPredicate::LLVMIntSGE;
+            llvm::core::LLVMBuildICmp(builder, op, lhs, rhs, name.as_ptr())
         }
 
         Expr::Add(lhs, rhs) => {
@@ -224,7 +269,8 @@ unsafe fn codegen_expr(
         Expr::IfElse(condition, then_body, else_body) => {
             let condition_value = codegen_expr(context, builder, func, names, *condition);
             let int_type = llvm::core::LLVMInt64TypeInContext(context);
-            let zero = llvm::core::LLVMConstInt(int_type, 0, 0);
+            let pred_type = llvm::core::LLVMInt1TypeInContext(context);
+            let zero = llvm::core::LLVMConstInt(pred_type, 0, 0);
 
             let name = CString::new("is_nonzero").unwrap();
             let is_nonzero = llvm::core::LLVMBuildICmp(
