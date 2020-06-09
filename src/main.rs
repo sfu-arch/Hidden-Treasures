@@ -68,7 +68,6 @@ pub rule statements() -> Vec<Expr>
         a:@ _ "*" _ b:(@) { Expr::Mul(Box::new(a), Box::new(b)) }
         a:@ _ "/" _ b:(@) { Expr::Div(Box::new(a), Box::new(b)) }
         --
-        i:identifier() _ "(" args:((_ e:expression() _ {e}) ** ",") ")" { Expr::Call(i, args) }
         i:identifier() { Expr::Identifier(i) }
         l:literal() { l }
     }
@@ -78,8 +77,6 @@ pub rule statements() -> Vec<Expr>
 
     rule literal() -> Expr
         = n:$(['0'..='9']+) { Expr::Literal(n.to_owned()) }
-        / "&" i:identifier() { Expr::GlobalDataAddr(i) }
-
     rule _() =  quiet!{[' ' | '\t']*}
 });
 
@@ -317,7 +314,41 @@ unsafe fn codegen_expr(
             llvm::core::LLVMAddIncoming(phi, values.as_mut_ptr(), blocks.as_mut_ptr(), 2);
             phi
         }
-        _ => {
+        Expr::WhileLoop(condition, body) => {
+            let entry_name = CString::new("loop").unwrap();
+            let header_block =
+                llvm::core::LLVMAppendBasicBlockInContext(context, func, entry_name.as_ptr());
+            let then_block =
+                llvm::core::LLVMAppendBasicBlockInContext(context, func, entry_name.as_ptr());
+            let merge_block =
+                llvm::core::LLVMAppendBasicBlockInContext(context, func, entry_name.as_ptr());
+            llvm::core::LLVMBuildBr(builder, header_block);
+            llvm::core::LLVMPositionBuilderAtEnd(builder, header_block);
+
+            let condition_value = codegen_expr(context, builder, func, names, *condition);
+            let int_type = llvm::core::LLVMInt64TypeInContext(context);
+            let pred_type = llvm::core::LLVMInt1TypeInContext(context);
+            let zero = llvm::core::LLVMConstInt(pred_type, 0, 0);
+
+            let name = CString::new("is_nonzero").unwrap();
+            let is_nonzero = llvm::core::LLVMBuildICmp(
+                builder,
+                llvm::LLVMIntPredicate::LLVMIntNE,
+                condition_value,
+                zero,
+                name.as_ptr(),
+            );
+
+            llvm::core::LLVMBuildCondBr(builder, is_nonzero, then_block, merge_block);
+
+            llvm::core::LLVMPositionBuilderAtEnd(builder, then_block);
+            let mut then_return = zero;
+            for expr in body {
+                then_return = codegen_expr(context, builder, func, names, expr);
+            }
+            llvm::core::LLVMBuildBr(builder, header_block);
+
+            llvm::core::LLVMPositionBuilderAtEnd(builder, merge_block);
             let int_type = llvm::core::LLVMInt64TypeInContext(context);
             llvm::core::LLVMConstInt(int_type, 0, 0)
         }
