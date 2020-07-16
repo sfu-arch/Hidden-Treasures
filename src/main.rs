@@ -7,6 +7,7 @@ use std::ffi::CString;
 use std::fs::File;
 use std::io::Read;
 use std::ptr;
+use std::env;
 
 pub enum Expr {
     Literal(String),
@@ -83,8 +84,9 @@ pub rule statements() -> Vec<Expr>
 use self::program::*;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
     let mut input = String::new();
-    let mut f = File::open("in.ex").unwrap();
+    let mut f = File::open(&args[1]).unwrap();
     f.read_to_string(&mut input).unwrap();
 
     let parsed_input = statements(&input).unwrap();
