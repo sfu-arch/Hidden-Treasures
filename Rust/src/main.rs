@@ -1,3 +1,7 @@
+// This code was created based on the following:
+// https://github.com/bytecodealliance/simplejit-demo
+// https://blog.ulysse.io/post/a-toy-front-end-for-llvm-written-in-rust/
+
 extern crate peg;
 
 extern crate llvm_sys as llvm;
