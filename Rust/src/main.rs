@@ -1,4 +1,4 @@
-// This code was created based on the following:
+// This code was created based on
 // https://github.com/bytecodealliance/simplejit-demo
 // https://blog.ulysse.io/post/a-toy-front-end-for-llvm-written-in-rust/
 
@@ -273,7 +273,7 @@ unsafe fn codegen_expr(
             let condition_value = codegen_expr(context, builder, func, names, *condition);
             let int_type = llvm::core::LLVMInt64TypeInContext(context);
             let pred_type = llvm::core::LLVMInt1TypeInContext(context);
-            let zero = llvm::core::LLVMConstInt(pred_type, 0, 0);
+            let zero = llvm::core::LLVMConstInt(llvm::core::LLVMTypeOf(condition_value), 0, 0);
 
             let name = CString::new("is_nonzero").unwrap();
             let is_nonzero = llvm::core::LLVMBuildICmp(
