@@ -1,6 +1,8 @@
 # Connecting to arch servers
 
-# add this to the ~/.ssh/config
+## add this to the ~/.ssh/config
+
+```
 Host rcg
     HostName rcga-linux-ts1.dc.sfu.ca
     User <Your SFU computing ID>
@@ -12,9 +14,11 @@ Host server-01
     User <Your SFU computing ID>
     ProxyJump rcg
     ServerAliveInterval 240
-    
-/nfs : NFS mounted across all servers
-/data: Local to each server.
+```
+
+
+- /nfs : NFS mounted across all servers
+- /data: Local to each server.
 
 Your password login will be same across all servers
 
