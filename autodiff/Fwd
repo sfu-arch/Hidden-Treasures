@@ -1,0 +1,13 @@
+digraph {
+	rankdir=LR size="10, 8"
+	node [shape=circle]
+	x [label=x shape=circle]
+	y [label=y shape=circle]
+	"mul/0" [label=mul shape=circle]
+	z [label=z shape=circle]
+	"add/0" [label=add shape=circle]
+	x -> "mul/0" [label=x]
+	y -> "mul/0" [label=y]
+	"mul/0" -> "add/0" [label="mul/0"]
+	z -> "add/0" [label=z]
+}
