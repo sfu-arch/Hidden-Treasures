@@ -1,0 +1,21 @@
+tensor:
+  name: conv-output-os-a
+  rank_ids:
+  - Q
+  shape: [6]
+  root:
+  - fiber:
+      coords:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      payloads:
+      - 7
+      - 0
+      - 11
+      - 3
+      - 9
+      - 10

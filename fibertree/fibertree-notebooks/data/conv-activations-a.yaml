@@ -1,0 +1,9 @@
+tensor:
+  name: conv-activations-a
+  rank_ids: [ H ]
+  shape: [8]
+  root:
+    - fiber:
+        coords:   [ 0, 2, 4, 5, 6, 7 ]
+        payloads: [ 1, 2, 3, 1, 2, 3 ]
+

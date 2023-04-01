@@ -1,0 +1,8 @@
+tensor:
+  name: spMspV-b
+  rank_ids: [ K ]
+  shape: [9]
+  root:
+    - fiber:
+        coords:   [  0,  3,  8 ]
+        payloads: [  4,  8, 10 ]

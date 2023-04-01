@@ -1,0 +1,9 @@
+tensor:
+  name: conv-weights-a
+  rank_ids: [ R ]
+  shape: [3]
+  root:
+    - fiber:
+        coords:   [ 0, 2 ]
+        payloads: [ 1, 3 ]
+

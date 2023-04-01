@@ -1,0 +1,8 @@
+tensor:
+  name: elementwise-a
+  rank_ids: [ M ]
+  shape: [7]
+  root:
+    - fiber:
+        coords:   [ 0, 2, 4, 6 ]
+        payloads: [ 1, 3, 5, 7 ]
