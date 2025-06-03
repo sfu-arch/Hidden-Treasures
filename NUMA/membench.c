@@ -1,0 +1,62 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <time.h>
+
+/* -------- timing helpers -------- */
+static inline uint64_t ns_now(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    return (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
+
+/* MiB → bytes; GiB factor for later */
+#define GiB (1024.0 * 1024.0 * 1024.0)
+
+int main(int argc, char **argv)
+{
+    const size_t bytes = (argc > 1)
+        ? strtoull(argv[1], NULL, 0)
+        : (1UL << 29);               /* default 512 MiB */
+
+    const size_t n = bytes / sizeof(uint64_t);
+    uint64_t  *buf = aligned_alloc(64, n * sizeof(uint64_t));
+    if (!buf) { perror("alloc"); return 1; }
+
+    /* Commit pages and initialise */
+    for (size_t i = 0; i < n; ++i) buf[i] = i;
+
+    srand(1);                        /* deterministic run-to-run */
+
+    // -------- sequential scan --------
+    uint64_t t0 = ns_now(), sum = 0;
+    for (size_t r=0;r<4;r++)          // repeat to amplify effect
+        for (size_t i=0;i<n;i++)
+            sum += buf[i];
+    uint64_t t1 = ns_now();
+    double gb_s = (double)(4*bytes) / (t1-t0);   // bytes/ns  -> GB/s
+    printf("seq %.1f GB/s  (checksum=%#llx)\n", gb_s, (unsigned long long)sum);
+
+
+    /* -------- pointer-chase build -------- */
+    /* Create a random permutation so every element points to the next */
+    for (size_t i = n - 1; i > 0; --i) {
+        size_t j = (size_t)rand() % (i + 1);
+        uint64_t tmp = buf[i]; buf[i] = buf[j]; buf[j] = tmp;
+    }
+    for (size_t i = 0; i < n; ++i) buf[i] %= n;
+
+    /* -------- pointer-chase timing -------- */
+    size_t idx = 0;
+    t0 = ns_now();
+    for (size_t i = 0; i < n; ++i)
+        idx = buf[idx];
+    t1 = ns_now();
+
+    double hop_ns = (double)(t1 - t0) / (double)n;   /* ← fixed! */
+    printf("chase: %.3f ns/hop  (final idx %zu)\n", hop_ns, idx);
+
+    free(buf);
+    return 0;
+}
