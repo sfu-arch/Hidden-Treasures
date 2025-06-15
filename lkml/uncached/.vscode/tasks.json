@@ -1,0 +1,42 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Kernel Module",
+			"type": "shell",
+			"command": "make",
+			"args": [
+				"all"
+			],
+			"group": "build",
+			"problemMatcher": [
+				"$gcc"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Test Caching Functionality",
+			"type": "shell",
+			"command": "make",
+			"args": [
+				"cache_test"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"isBackground": false,
+			"dependsOn": "Build Kernel Module"
+		},
+		{
+			"label": "Full Test Suite",
+			"type": "shell",
+			"command": "make",
+			"args": [
+				"full_test"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"isBackground": false,
+			"dependsOn": "Build Kernel Module"
+		}
+	]
+}
