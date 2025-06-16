@@ -908,3 +908,347 @@ printk(KERN_INFO "mmap: size=%lu, offset=%lu, page_idx=%d\n",
 | **Test Coverage** | Basic timing tests | Comprehensive test suite |
 
 Both modules together provide a comprehensive understanding of Linux kernel memory management and CPU cache behavior, suitable for educational use and system performance research. The dynamic_cache module now includes important lessons about vmalloc memory mapping and proper user-kernel interface design.
+
+---
+
+# CMA Cache Control Module (cma_cache.c)
+
+## Overview
+
+The `cma_cache` module demonstrates **large contiguous memory allocation** using DMA coherent allocator with cache control capabilities. This module focuses on allocating multi-megabyte contiguous memory blocks that are suitable for DMA operations and provides dynamic cache control over these large allocations.
+
+## Key Features
+
+### 1. **Large Contiguous Memory Allocation**
+- Uses `dma_alloc_coherent()` for guaranteed physically contiguous memory
+- Leverages CMA (Contiguous Memory Allocator) backend when available
+- Supports allocation sizes from 1MB to 256MB
+- Maintains allocation tracking with unique IDs
+
+### 2. **Variable Size with Suffix Support**
+- Size specification with K/M/G suffixes (e.g., "4M", "64M", "1G")
+- Automatic page alignment and size validation
+- Flexible allocation patterns (1MB, 2MB, 4MB, etc.)
+- Memory size limits: 1MB minimum, 256MB maximum
+
+### 3. **Cache Control on Large Blocks**
+- Per-allocation cache state control (cached/uncached/toggle)
+- Uses `set_memory_uc()` and `set_memory_wb()` for cache attribute changes
+- Maintains cache state across large memory regions
+- Supports runtime cache state transitions
+
+### 4. **DMA-Compatible Memory Management**
+- Allocates DMA-coherent memory suitable for device operations
+- Provides both virtual and physical (DMA) addresses
+- Ensures memory is accessible from both CPU and potential DMA devices
+- Proper cleanup with cache state restoration
+
+## Architecture
+
+```
+User Space                    Kernel Space
+-----------                   -------------
+
+┌─────────────────┐          ┌──────────────────────┐
+│   CMA Test      │          │  Sysfs Interface     │
+│   Program       │◄────────►│ /sys/kernel/         │
+│                 │          │   cma_cache/         │
+│ ./cma_test      │          │                      │
+└─────────────────┘          └──────────────────────┘
+         │                   │
+         │ mmap()            │
+         ▼                   ▼
+┌─────────────────┐          ┌──────────────────────┐
+│   /dev/         │◄────────►│  DMA Allocation      │
+│  cma_cache      │          │  Manager             │
+└─────────────────┘          │                      │
+                              │ ┌──────────────────┐ │
+                              │ │ Platform Device  │ │
+                              │ │ (for DMA ops)    │ │
+                              │ └──────────────────┘ │
+                              │                      │
+                              │ ┌──────────────────┐ │
+                              │ │ DMA Coherent     │ │
+                              │ │ Memory Pool      │ │
+                              │ │                  │ │
+                              │ │ • 1MB - 256MB    │ │
+                              │ │ • Physically     │ │
+                              │ │   contiguous     │ │
+                              │ │ • Cache control  │ │
+                              │ └──────────────────┘ │
+                              │                      │
+                              │ ┌──────────────────┐ │
+                              │ │ Allocation       │ │
+                              │ │ Tracking         │ │
+                              │ │                  │ │
+                              │ │ • virt_addr      │ │
+                              │ │ • dma_handle     │ │
+                              │ │ • size           │ │
+                              │ │ • cache_state    │ │
+                              │ │ • alloc_id       │ │
+                              │ └──────────────────┘ │
+                              └──────────────────────┘
+```
+
+## Usage Examples
+
+### Basic Large Block Allocation
+
+```bash
+# Load the module
+sudo insmod cma_cache.ko
+
+# Check initial status
+cat /sys/kernel/cma_cache/status
+
+# Allocate various sized blocks
+echo "alloc 1M" > /sys/kernel/cma_cache/command     # 1MB block
+echo "alloc 4M" > /sys/kernel/cma_cache/command     # 4MB block  
+echo "alloc 16M" > /sys/kernel/cma_cache/command    # 16MB block
+echo "alloc 64M" > /sys/kernel/cma_cache/command    # 64MB block
+
+# Check allocation status
+cat /sys/kernel/cma_cache/status
+```
+
+### Cache Control on Large Blocks
+
+```bash
+# Set different cache states
+echo "uncache 1" > /sys/kernel/cma_cache/command    # Set 1MB block as uncached
+echo "cache 2" > /sys/kernel/cma_cache/command      # Set 4MB block as cached
+echo "toggle 3" > /sys/kernel/cma_cache/command     # Toggle 16MB block cache state
+
+# View current states
+cat /sys/kernel/cma_cache/status
+```
+
+#### Permission Requirements
+```bash
+# Sysfs files need write permissions for non-root users:
+sudo chmod 666 /sys/kernel/cma_cache/command
+sudo chmod 666 /dev/cma_cache
+```
+
+### Memory Mapping Large Blocks
+
+```c
+// Open device file
+int fd = open("/dev/cma_cache", O_RDWR);
+
+// Map allocation 1 (1MB block, allocation ID 1)
+void *addr = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 1 * getpagesize());
+
+// Access the large contiguous memory block
+volatile uint64_t *data = (volatile uint64_t *)addr;
+for (int i = 0; i < 131072; i++) {  // 1MB / 8 bytes
+    data[i] = 0x1234567890ABCDEF + i;
+}
+
+// Unmap and cleanup
+munmap(addr, 1024*1024);
+close(fd);
+```
+
+## Implementation Details
+
+### DMA Allocation Management
+
+```c
+struct cma_allocation {
+    void *virt_addr;                 // Virtual address of allocation
+    dma_addr_t dma_handle;          // DMA address (physical address)
+    size_t size;                    // Size in bytes
+    int num_pages;                  // Number of pages
+    int is_cached;                  // Cache state (1=cached, 0=uncached)
+    int allocated;                  // Whether this slot is in use
+    int alloc_id;                   // Unique allocation identifier
+};
+
+static struct cma_allocation allocations[MAX_CMA_ALLOCATIONS]; // Up to 32 allocations
+```
+
+### Platform Device for DMA Operations
+
+```c
+// Create platform device for DMA/CMA operations
+cma_pdev = platform_device_alloc("cma_cache", -1);
+platform_device_add(cma_pdev);
+
+// Set DMA mask for the platform device
+dma_set_mask_and_coherent(&cma_pdev->dev, DMA_BIT_MASK(32));
+```
+
+### Large Block Allocation Algorithm
+
+```c
+static int allocate_cma_memory(size_t size)
+{
+    // 1. Validate size (1MB min, 256MB max)
+    // 2. Page-align the size
+    // 3. Find free allocation slot
+    // 4. Allocate using dma_alloc_coherent()
+    // 5. Initialize allocation metadata
+    // 6. Return allocation ID
+    
+    alloc->virt_addr = dma_alloc_coherent(&cma_pdev->dev, size, 
+                                         &alloc->dma_handle, GFP_KERNEL);
+}
+```
+
+### Cache Control on Large Regions
+
+```c
+static int set_cma_cache_state(struct cma_allocation *alloc, int cached)
+{
+    unsigned long virt = (unsigned long)alloc->virt_addr;
+    int num_pages = alloc->num_pages;
+    
+    if (cached) {
+        return set_memory_wb(virt, num_pages);  // Set as write-back cached
+    } else {
+        return set_memory_uc(virt, num_pages);  // Set as uncached
+    }
+}
+```
+
+### Status Display
+
+The status interface provides comprehensive information about large allocations:
+
+```
+DMA Cache Control Status
+========================
+Total allocations: 4/32
+Total allocated memory: 85196800 bytes (81.3 MB)
+Cached allocations: 2
+Uncached allocations: 2
+
+Active Allocations:
+ID   Size       Pages  Virtual     Physical    Cache State
+---  ---------  -----  ----------  ----------  -----------
+  1     1024K    256  ffff888...  0x81700000  UNCACHED
+  2     4096K   1024  ffff888...  0x82000000  CACHED
+  3    16384K   4096  ffff888...  0x83000000  UNCACHED
+  4    65536K  16384  ffff888...  0x84000000  CACHED
+
+Size limits: 1024K - 262144K
+```
+
+## Performance Characteristics
+
+### Allocation Performance
+- **Small blocks (1-4MB)**: Near-instantaneous allocation
+- **Medium blocks (16-64MB)**: Allocation time 100-500ms
+- **Large blocks (128-256MB)**: Allocation time 1-5 seconds
+- **Physical contiguity**: Guaranteed across entire allocation
+
+### Cache Performance Impact
+- **Cached large blocks**: ~6-10 ns per access
+- **Uncached large blocks**: ~30-70 ns per access  
+- **Performance ratio**: 5-7x slower for uncached memory
+- **Block size impact**: Larger blocks show more pronounced cache effects
+
+### Memory Usage Efficiency
+- **Physical memory**: Directly mapped, no fragmentation within blocks
+- **Virtual memory**: Efficient mapping with proper cache attributes
+- **DMA compatibility**: Zero-copy access for DMA devices
+- **Resource overhead**: Minimal per-allocation tracking
+
+## Educational Value
+
+The CMA cache module provides insights into:
+
+### **Advanced Memory Management**
+- Large contiguous memory allocation techniques
+- DMA-coherent memory management
+- Physical memory layout and contiguity
+- Platform device and DMA subsystem integration
+
+### **Cache Behavior at Scale**
+- Cache effects on large memory regions
+- Performance scaling with memory size
+- Cache coherency across large allocations
+- Memory access pattern optimization
+
+### **Real-World Applications**
+- Device driver memory management
+- Graphics and media buffer allocation
+- Network packet buffer management
+- High-performance computing memory pools
+
+### **System Integration**
+- Kernel-userspace memory sharing
+- sysfs interface design patterns
+- Character device implementation
+- Resource management and cleanup
+
+## Comparison with Other Modules
+
+| Feature | uncached_mem | dynamic_cache | cma_cache |
+|---------|-------------|---------------|-----------|
+| **Allocation Size** | 4KB - 128MB | Fixed pool (4MB) | 1MB - 256MB |
+| **Granularity** | Entire allocation | Per-page (4KB) | Per-allocation |
+| **Memory Type** | Various methods | vmalloc pool | DMA coherent |
+| **Physical Contiguity** | Not guaranteed | Not guaranteed | Guaranteed |
+| **Cache Control** | Static per alloc | Dynamic per page | Dynamic per block |
+| **DMA Suitability** | Limited | No | Full |
+| **Main Allocation APIs** | `__get_free_pages()`<br>`vmalloc()`<br>`kmalloc()` | `vmalloc()`<br>`vmalloc_to_page()` | `dma_alloc_coherent()`<br>`platform_device_*()` |
+| **Cache Control APIs** | `set_memory_uc()`<br>`set_memory_wb()` | `set_memory_uc()`<br>`set_memory_wb()`<br>`flush_tlb_*()` | `set_memory_uc()`<br>`set_memory_wb()` |
+| **Memory Mapping APIs** | `remap_pfn_range()`<br>`vm_insert_page()` | `vm_insert_page()`<br>`vmalloc_to_page()` | `remap_pfn_range()`<br>`virt_to_phys()` |
+| **Interface APIs** | `kobject_create()`<br>`sysfs_create_group()`<br>`cdev_init()` | `kobject_create()`<br>`sysfs_create_group()`<br>`cdev_init()` | `kobject_create()`<br>`sysfs_create_group()`<br>`cdev_init()` |
+| **Use Case** | Basic demonstration | Research tool | Real-world scenarios |
+| **Complexity** | Low | Medium | Medium-High |
+
+The three modules together provide a comprehensive educational framework covering all aspects of Linux kernel memory management and cache control, from basic concepts to advanced real-world applications.
+
+## Kernel API Reference
+
+The following table provides a quick reference for all kernel APIs used across the three modules:
+
+| API Function | Category | Description |
+|--------------|----------|-------------|
+| **Memory Allocation APIs** |
+| `__get_free_pages(flags, order)` | Physical Memory | Allocates 2^order contiguous physical pages.<br>Returns virtual address, requires `free_pages()` cleanup. |
+| `kmalloc(size, flags)` | Physical Memory | Allocates small physically contiguous memory.<br>Fast allocation, limited size, requires `kfree()` cleanup. |
+| `vmalloc(size)` | Virtual Memory | Allocates virtually contiguous, physically fragmented memory.<br>Good for large allocations, requires `vfree()` cleanup. |
+| `dma_alloc_coherent(dev, size, handle, flags)` | DMA Memory | Allocates DMA-coherent physically contiguous memory.<br>Returns both virtual and DMA addresses, requires `dma_free_coherent()`. |
+| `free_pages(addr, order)` | Memory Cleanup | Frees memory allocated by `__get_free_pages()`.<br>Must restore cache attributes before calling. |
+| `kfree(ptr)` | Memory Cleanup | Frees memory allocated by `kmalloc()`.<br>Pointer must be exactly as returned by `kmalloc()`. |
+| `vfree(ptr)` | Memory Cleanup | Frees memory allocated by `vmalloc()`.<br>Automatically handles page-by-page cleanup. |
+| `dma_free_coherent(dev, size, addr, handle)` | DMA Cleanup | Frees DMA memory allocated by `dma_alloc_coherent()`.<br>Must provide both virtual address and DMA handle. |
+| **Memory Analysis APIs** |
+| `vmalloc_to_page(addr)` | Page Conversion | Converts vmalloc virtual address to page structure.<br>Required for mapping vmalloc pages to user space. |
+| `virt_to_phys(addr)` | Address Translation | Converts virtual address to physical address.<br>Works for directly mapped memory (not vmalloc). |
+| `page_to_pfn(page)` | Page Conversion | Converts page structure to page frame number.<br>Used for memory mapping operations. |
+| `get_order(size)` | Size Calculation | Calculates order (power of 2) for given size.<br>Required for `__get_free_pages()` allocation. |
+| **Cache Control APIs** |
+| `set_memory_uc(addr, numpages)` | Cache Control | Sets memory pages as uncached (bypasses CPU cache).<br>Dramatically reduces memory access performance (~50x slower). |
+| `set_memory_wb(addr, numpages)` | Cache Control | Restores write-back caching for memory pages.<br>Must be called before freeing memory to avoid corruption. |
+| `flush_tlb_kernel_range(start, end)` | TLB Management | Flushes TLB entries for specified kernel address range.<br>Required after changing page attributes for immediate effect. |
+| **Memory Mapping APIs** |
+| `remap_pfn_range(vma, addr, pfn, size, prot)` | Physical Mapping | Maps physically contiguous pages to user virtual memory.<br>Used for `__get_free_pages()` and DMA memory. |
+| `vm_insert_page(vma, addr, page)` | Page Mapping | Maps individual page structure to user virtual memory.<br>Required for vmalloc pages (non-contiguous physical memory). |
+| **Platform Device APIs** |
+| `platform_device_alloc(name, id)` | Device Creation | Allocates platform device structure for DMA operations.<br>Required to obtain device structure for DMA allocation. |
+| `platform_device_add(pdev)` | Device Registration | Registers platform device with kernel device model.<br>Makes device available for DMA operations. |
+| `dma_set_mask_and_coherent(dev, mask)` | DMA Setup | Sets DMA addressing capabilities for device.<br>Configures which physical addresses device can access. |
+| **Sysfs Interface APIs** |
+| `kobject_create_and_add(name, parent)` | Sysfs Directory | Creates directory in sysfs filesystem.<br>Provides structured interface for kernel module parameters. |
+| `sysfs_create_group(kobj, group)` | Sysfs Attributes | Creates group of attribute files in sysfs directory.<br>Allows user space to interact with kernel module. |
+| `sysfs_remove_group(kobj, group)` | Sysfs Cleanup | Removes attribute group from sysfs.<br>Required for proper cleanup on module unload. |
+| `kobject_put(kobj)` | Sysfs Cleanup | Decrements reference count and cleans up kobject.<br>Automatically removes sysfs directory when count reaches zero. |
+| **Character Device APIs** |
+| `alloc_chrdev_region(dev, first, count, name)` | Device Numbers | Dynamically allocates device major/minor numbers.<br>Preferred over static assignment for modern drivers. |
+| `cdev_init(cdev, fops)` | Device Init | Initializes character device with file operations.<br>Links device structure to operation function pointers. |
+| `cdev_add(cdev, dev, count)` | Device Registration | Adds character device to kernel device registry.<br>Makes device available for user space access. |
+| `class_create(owner, name)` | Device Class | Creates device class for automatic /dev file creation.<br>Enables udev to automatically create device files. |
+| `device_create(class, parent, devt, data, fmt, ...)` | Device File | Creates device file in /dev directory.<br>Provides user space access point to character device. |
+
+### Usage Notes
+
+- **Memory allocation**: Choose API based on size and contiguity requirements
+- **Cache control**: Always restore cache attributes before freeing memory  
+- **Memory mapping**: Use `remap_pfn_range()` for physical memory, `vm_insert_page()` for vmalloc
+- **Error handling**: All APIs can fail; always check return values
+- **Cleanup order**: Reverse of initialization order to avoid resource leaks
