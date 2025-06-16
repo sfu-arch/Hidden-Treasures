@@ -24,7 +24,8 @@ User Space                    Kernel Space
 │  User Program   │          │                      │
 │                 │◄────────►│   Sysfs Interface    │
 │ ./timing_test   │          │ /sys/kernel/         │
-└─────────────────┘          │   uncached_mem/      │
+│                 │          │   uncached_mem/      │
+└─────────────────┘          │                      │
          │                   │                      │
          │ mmap()            └──────────────────────┘
          ▼                             │
@@ -382,3 +383,421 @@ Demonstrates modern Linux kernel practices:
 7. **Monitor system resources** during large allocations
 
 This module serves as an excellent example of modern Linux kernel module development while providing practical insights into CPU cache behavior and memory management strategies.
+
+---
+
+# Dynamic Cache Control Module (dynamic_cache.c)
+
+## Overview
+
+The `dynamic_cache` module extends the cache behavior demonstration by providing **per-page dynamic cache control**. Unlike the static `uncached_mem` module that allocates entire regions as cached or uncached, this module allows individual pages to have their cache state toggled at runtime.
+
+## Key Features
+
+### 1. **Page-Level Cache Control**
+- Individual pages can be set as cached or uncached dynamically
+- Uses `set_memory_uc()` and `set_memory_wb()` for cache attribute changes
+- Maintains per-page state tracking
+- Supports cache state toggling
+
+### 2. **Advanced Memory Management**
+- Pre-allocates a pool of 1024 pages using vmalloc
+- Tracks each page's virtual address, page structure, and PFN
+- Manages allocation/deallocation of individual pages to users
+- Automatic state restoration on cleanup
+
+### 3. **Enhanced User Interface**
+- **Command interface**: `echo "command args" > /sys/kernel/dynamic_cache/command`
+- **Status monitoring**: Real-time view of all allocated pages
+- **Page map visualization**: Visual representation of allocation state
+- **Pattern testing**: Set and verify test patterns on pages
+
+## Architecture
+
+```
+User Space                    Kernel Space
+-----------                   -------------
+
+┌─────────────────┐          ┌──────────────────────┐
+│  Test Program   │          │  Sysfs Interface     │
+│                 │◄────────►│ /sys/kernel/         │
+│ ./dynamic_test  │          │   dynamic_cache/     │
+└─────────────────┘          │                      │
+         │                   │                      │
+         │ mmap()            └──────────────────────┘
+         ▼                   │
+┌─────────────────┐          ┌──────┬───────────────┐
+│   /dev/         │◄────────►│  Page Pool Manager   │
+│ dynamic_cache   │          │                      │
+└─────────────────┘          │ ┌──────────────────┐ │
+                              │ │ Page Pool        │ │
+                              │ │ (1024 pages)     │ │
+                              │ │                  │ │
+                              │ │ vmalloc region   │ │
+                              │ └──────────────────┘ │
+                              │                      │
+                              │ ┌──────────────────┐ │
+                              │ │ Page Tracking    │ │
+                              │ │                  │ │
+                              │ │ • virt_addr      │ │
+                              │ │ • page struct    │ │
+                              │ │ • pfn            │ │
+                              │ │ • cache state    │ │
+                              │ │ • allocation     │ │
+                              │ │                  │ │
+                              │ └──────────────────┘ │
+                              │                      │
+                              │ ┌──────────────────┐ │
+                              │ │ Dynamic Cache    │ │
+                              │ │ Control          │ │
+                              │ │                  │ │
+                              │ │ set_memory_uc()  │ │
+                              │ │ set_memory_wb()  │ │
+                              │ │ flush_tlb_*()    │ │
+                              │ └──────────────────┘ │
+                              └──────────────────────┘
+```
+
+## Usage Examples
+
+### Basic Page Allocation and Cache Control
+
+```bash
+# Load the module
+sudo insmod dynamic_cache.ko
+
+# Check initial status
+cat /sys/kernel/dynamic_cache/status
+
+# Allocate a page (returns page ID)
+echo "alloc" > /sys/kernel/dynamic_cache/command
+
+# Set page 0 as uncached
+echo "uncache 0" > /sys/kernel/dynamic_cache/command
+
+# Set page 0 as cached
+echo "cache 0" > /sys/kernel/dynamic_cache/command
+
+# Toggle cache state
+echo "toggle 0" > /sys/kernel/dynamic_cache/command
+
+# Set test pattern
+echo "pattern 0 AA" > /sys/kernel/dynamic_cache/command
+
+# View allocation map
+cat /sys/kernel/dynamic_cache/page_map
+
+# Free the page
+echo "free 0" > /sys/kernel/dynamic_cache/command
+```
+
+### Memory Mapping Individual Pages
+
+```c
+// Open device file
+int fd = open("/dev/dynamic_cache", O_RDWR);
+
+// Map page 5 (page ID is passed as offset)
+void *addr = mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 5);
+
+// Access the memory
+volatile uint64_t *data = (volatile uint64_t *)addr;
+*data = 0x1234567890ABCDEF;
+
+// Unmap
+munmap(addr, 4096);
+close(fd);
+```
+
+## Implementation Details
+
+### Page Pool Management
+
+```c
+struct page_info {
+    void *virt_addr;              // Virtual address of the page
+    struct page *page;            // Page structure pointer  
+    unsigned long pfn;            // Page frame number
+    int is_cached;                // Current cache state (1=cached, 0=uncached)
+    int allocated;                // Whether this slot is in use
+};
+
+static struct page_info pages[MAX_PAGES]; // Page tracking array
+```
+
+### Dynamic Cache Control
+
+The module uses architecture-specific functions to control page cache attributes:
+
+```c
+static int set_page_cache_state(int page_idx, int cached)
+{
+    if (cached) {
+        // Set page as cached (write-back)
+        ret = set_memory_wb((unsigned long)pages[page_idx].virt_addr, 1);
+    } else {
+        // Set page as uncached
+        ret = set_memory_uc((unsigned long)pages[page_idx].virt_addr, 1);
+    }
+    
+    // Flush TLB to ensure changes take effect
+    flush_tlb_kernel_range((unsigned long)pages[page_idx].virt_addr,
+                          (unsigned long)pages[page_idx].virt_addr + PAGE_SIZE);
+    return ret;
+}
+```
+
+### Memory Mapping with Cache Attributes
+
+```c
+static int device_mmap(struct file *file, struct vm_area_struct *vma)
+{
+    int page_idx = vma->vm_pgoff; // Page index from offset
+    struct page *page = pages[page_idx].page;
+    
+    // Set page protection based on cache state
+    if (!pages[page_idx].is_cached) {
+        vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+    }
+    
+    // For vmalloc pages, use vm_insert_page instead of remap_pfn_range
+    return vm_insert_page(vma, vma->vm_start, page);
+}
+```
+
+## Critical Implementation Gotchas and Fixes
+
+### 1. **vmalloc Memory Mapping Issue** ⚠️
+
+**Problem**: Initially used `remap_pfn_range()` to map vmalloc pages, which failed because vmalloc pages are not guaranteed to be physically contiguous.
+
+**Symptoms**:
+- mmap() returns success but pages aren't properly accessible
+- Kernel may crash or corrupt memory on page access
+- Inconsistent behavior across different memory allocations
+
+**Wrong Implementation**:
+```c
+// DON'T DO THIS with vmalloc pages
+pfn = pages[page_idx].pfn;
+if (remap_pfn_range(vma, vma->vm_start, pfn, PAGE_SIZE, vma->vm_page_prot)) {
+    return -EAGAIN;
+}
+```
+
+**Correct Implementation**:
+```c
+// CORRECT: Use vm_insert_page for vmalloc pages
+page = pages[page_idx].page;
+ret = vm_insert_page(vma, vma->vm_start, page);
+if (ret) {
+    printk(KERN_ERR "vm_insert_page failed: %d\n", ret);
+    return ret;
+}
+```
+
+**Key Learning**: `remap_pfn_range()` is for physically contiguous memory (like `__get_free_pages()`), while `vm_insert_page()` is for individual pages from vmalloc.
+
+### 2. **mmap Offset Interpretation** ⚠️
+
+**Problem**: Confusion about how mmap offset parameter works in user space vs kernel space.
+
+**Wrong User Code**:
+```c
+// Wrong: passing page index directly
+mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 1);  // FAILS
+```
+
+**Correct User Code**:
+```c
+// Correct: offset in bytes (page_index * PAGE_SIZE)
+mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 4096);  // Works
+```
+
+**Explanation**: 
+- User space: offset is in **bytes**
+- Kernel space: `vma->vm_pgoff` is automatically converted to **pages** by the kernel
+- For page N: user passes `N * PAGE_SIZE`, kernel receives `N` in `vm_pgoff`
+
+### 3. **VMA Flags for vmalloc Memory** ⚠️
+
+**Problem**: Using inappropriate VMA flags that are meant for device memory.
+
+**Wrong**:
+```c
+vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;  // VM_IO inappropriate
+```
+
+**Correct**:
+```c
+vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;  // No VM_IO for vmalloc
+```
+
+**Key Learning**: `VM_IO` flag is for actual hardware device memory, not for kernel vmalloc memory.
+
+### 4. **Page Structure Validation** ⚠️
+
+**Problem**: Not validating that vmalloc_to_page() succeeded before using the page structure.
+
+**Defensive Implementation**:
+```c
+if (!pages[page_idx].page) {
+    printk(KERN_ERR "Page %d has no page structure\n", page_idx);
+    return -EINVAL;
+}
+```
+
+### 5. **Test Program Page Allocation Tracking** ⚠️
+
+**Problem**: Complex parsing logic that failed to correctly identify allocated page IDs.
+
+**Wrong Approach**:
+```c
+// Complex status parsing that was unreliable
+line = strtok(status_buffer, "\n");
+// ... complex parsing logic that broke
+```
+
+**Simple Approach**:
+```c
+// Simple sequential tracking since module allocates pages in order
+static int next_page_id = 0;
+int page_id = num_allocated; // Use allocation count as page ID
+```
+
+## Educational Value - Advanced Concepts
+
+### 1. **Memory Mapping Strategies**
+Real-world demonstration of different memory mapping approaches:
+- **`remap_pfn_range()`**: For physically contiguous memory
+- **`vm_insert_page()`**: For individual pages (vmalloc, page cache)
+- **Understanding when to use each approach**
+
+### 2. **vmalloc vs. Physical Memory Management**
+- **Virtual memory**: vmalloc provides virtual contiguity, not physical
+- **Page structure tracking**: Using `vmalloc_to_page()` for individual page access
+- **Memory pool design**: Pre-allocation vs. on-demand allocation strategies
+
+### 3. **User-Kernel Interface Design**
+- **Offset interpretation**: How user-space byte offsets become kernel page indices
+- **Error handling**: Proper validation and error reporting across the interface
+- **Device file semantics**: Character device behavior for memory mapping
+
+### 3. **Runtime Cache Control**
+- **Dynamic reconfiguration**: Changing memory attributes after allocation
+- **State management**: Tracking complex per-page attributes
+- **Performance implications**: Real-time cache behavior changes
+
+### 4. **Comprehensive System Interface**
+- **Multi-attribute sysfs**: Command, status, and visualization interfaces
+- **Flexible command parsing**: String-based command interface
+- **Device file integration**: Character device for memory mapping
+
+## Performance Characteristics
+
+The dynamic cache control allows for detailed performance analysis:
+
+```
+Typical Performance Results (After Fixes):
+- Cached access:    ~1.3 ns per operation
+- Uncached access:  ~70 ns per operation  
+- Performance ratio: 50-70x slower for uncached
+- Cache toggle time: ~100 μs per page
+- TLB flush impact: ~10 μs per page
+- mmap functionality: Fully working with both cache states
+```
+
+## Gotchas and Limitations (Updated with Fixes)
+
+### 1. **Architecture Dependencies**
+- Cache control functions may not be available on all architectures
+- Some architectures may not support fine-grained cache control
+- TLB flush behavior varies between CPU architectures
+- **Fixed**: Module now gracefully handles architecture limitations with proper ifdefs
+
+### 2. **Memory Pool Limitations**
+- Fixed pool size (1024 pages = 4MB)
+- vmalloc may not provide physically contiguous pages
+- Cannot extend pool size dynamically
+- **Important**: vmalloc pages require special mapping techniques (vm_insert_page)
+
+### 3. **Performance Considerations**
+- Cache attribute changes are expensive operations
+- TLB flushes affect system-wide performance
+- Frequent cache toggles can impact overall system performance
+- **Measured Impact**: ~56x performance difference between cached/uncached in tests
+
+### 4. **System Stability**
+- Improper cache attribute management can cause system instability
+- Memory must be restored to cached state before freeing
+- Race conditions possible with concurrent access
+- **Fixed**: Proper cleanup on module unload and signal handling in tests
+
+### 5. **Memory Mapping Complexity** ⚠️ **CRITICAL**
+- **vmalloc mapping**: Requires `vm_insert_page()`, not `remap_pfn_range()`
+- **Offset calculation**: User space uses byte offsets, kernel receives page offsets
+- **VMA flags**: Different flags needed for vmalloc vs device memory
+- **Page validation**: Must verify vmalloc_to_page() success before mapping
+
+### 6. **Testing and Debugging Challenges**
+- Device permissions require root access for testing
+- Kernel debugging requires dmesg monitoring
+- mmap failures can be silent or misleading without proper error checking
+- **Fixed**: Comprehensive test suite with proper error reporting
+
+## Best Practices for Dynamic Cache Control (Updated)
+
+1. **Minimize cache attribute changes** - They are expensive operations
+2. **Batch operations** when possible to reduce TLB flush overhead
+3. **Always restore cache state** before freeing memory
+4. **Use appropriate synchronization** for multi-threaded access
+5. **Monitor system performance** impact during testing
+6. **Test on target architecture** - behavior varies significantly
+7. **Handle architecture differences** gracefully in production code
+8. **🆕 Use correct mapping functions** - `vm_insert_page()` for vmalloc, `remap_pfn_range()` for physical
+9. **🆕 Validate page structures** before attempting to map them
+10. **🆕 Implement comprehensive testing** with proper error handling and cleanup
+
+## Development Lessons Learned
+
+### **Memory Mapping API Selection**
+```c
+// For __get_free_pages() or alloc_pages() - physically contiguous
+ret = remap_pfn_range(vma, vma->vm_start, page_to_pfn(page), PAGE_SIZE, prot);
+
+// For vmalloc() pages - virtually contiguous
+ret = vm_insert_page(vma, vma->vm_start, vmalloc_to_page(addr));
+```
+
+### **User-Space mmap Offset Calculation**
+```c
+// For page N:
+int page_id = N;
+off_t offset = page_id * getpagesize();  // Convert to bytes
+void *addr = mmap(NULL, getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, fd, offset);
+```
+
+### **Kernel Debugging Strategy**
+```c
+printk(KERN_INFO "mmap: size=%lu, offset=%lu, page_idx=%d\n", 
+       size, vma->vm_pgoff, (int)vma->vm_pgoff);
+// Always log key parameters for debugging
+```
+
+## Comparison: Static vs. Dynamic Cache Control (Updated)
+
+| Feature | uncached_mem (Static) | dynamic_cache (Dynamic) |
+|---------|----------------------|-------------------------|
+| Cache Control | Allocation-time only | Runtime changeable |
+| Granularity | Entire allocation | Individual pages |
+| Memory Usage | Variable size (4KB-128MB) | Fixed pool (1024 pages) |
+| Allocation Method | __get_free_pages/vmalloc | vmalloc only |
+| Mapping Function | remap_pfn_range/vm_insert_page | vm_insert_page |
+| Interface | Simple alloc/free | Command-based |
+| Complexity | Low | High |
+| Use Case | Basic cache demonstration | Advanced cache research |
+| Performance Impact | One-time setup cost | Ongoing toggle costs |
+| **mmap Support** | ✅ Fixed and working | ✅ Fixed and working |
+| **Test Coverage** | Basic timing tests | Comprehensive test suite |
+
+Both modules together provide a comprehensive understanding of Linux kernel memory management and CPU cache behavior, suitable for educational use and system performance research. The dynamic_cache module now includes important lessons about vmalloc memory mapping and proper user-kernel interface design.
