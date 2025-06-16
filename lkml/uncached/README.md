@@ -1,6 +1,6 @@
-# Kernel Module for Uncached Memory Allocation with Sysfs Interface
+# Memory Management Kernel Modules for Cache Control Education
 
-This project demonstrates the implementation of a Linux kernel module that allocates both cached and uncached memory with variable size support, providing a modern sysfs interface for control and direct user-space access via mmap for performance testing.
+This project demonstrates comprehensive memory management techniques in Linux kernel modules, featuring three educational modules that showcase different aspects of memory allocation, cache control, and hardware interaction.
 
 ## Project Structure
 
@@ -8,10 +8,32 @@ This project demonstrates the implementation of a Linux kernel module that alloc
 uncached/
 ├── README.md           # This documentation file
 ├── DESIGN.md          # Detailed design explanation and API reference
-├── uncached_mem.c      # Kernel module source code with sysfs interface
-├── Makefile           # Build configuration for kernel module and test program
-└── timing_test.c      # User space timing test program with sysfs support
+├── uncached_mem.c      # Static cache control module with sysfs interface
+├── dynamic_cache.c     # Dynamic per-page cache control module
+├── cma_cache.c         # DMA/CMA-based large contiguous allocation module
+├── Makefile           # Build configuration for all modules and test programs
+├── timing_test.c      # Test program for uncached_mem module
+├── dynamic_test.c     # Test program for dynamic_cache module
+├── dynamic_size_test.c # Variable size allocation test for dynamic_cache
+└── cma_test.c         # Test program for cma_cache module
 ```
+
+## Modules Overview
+
+### 1. Static Cache Control (`uncached_mem`)
+- **Purpose**: Basic cache behavior demonstration
+- **Features**: Variable size allocation (4KB-128MB), static cache state
+- **Use Case**: Understanding cache impact on performance
+
+### 2. Dynamic Cache Control (`dynamic_cache`) 
+- **Purpose**: Advanced per-page cache manipulation
+- **Features**: Individual page cache control, variable-size blocks, runtime toggling
+- **Use Case**: Fine-grained cache research and analysis
+
+### 3. DMA/CMA Cache Control (`cma_cache`)
+- **Purpose**: Large contiguous memory allocation with cache control
+- **Features**: DMA coherent allocation (1MB-256MB), physical contiguity, cache attribute control
+- **Use Case**: Device driver development, large buffer management
 
 ## Documentation
 
@@ -1072,9 +1094,190 @@ ID   Virtual     PFN        Block    Cache State
 ...
 ```
 
+# DMA/CMA Cache Control Module
+
+## Overview
+
+The `cma_cache` module demonstrates large contiguous memory allocation using DMA coherent allocation (which may use CMA backend when available). This module is ideal for understanding device driver memory management and situations requiring guaranteed physical contiguity.
+
+## Key Features
+
+- **Large contiguous allocations**: 1MB to 256MB blocks
+- **DMA coherent memory**: Uses kernel's DMA allocation subsystem
+- **Physical contiguity**: Guaranteed contiguous physical memory
+- **Cache attribute control**: Set allocated blocks as cached or uncached
+- **Device integration**: Demonstrates platform device and DMA API usage
+- **Memory mapping**: Map large blocks to user space for testing
+
+## CMA Module Usage
+
+### Loading the Module
+
+```bash
+# Build all modules
+make all
+
+# Load the CMA cache module
+sudo insmod cma_cache.ko
+
+# Check if loaded successfully
+lsmod | grep cma_cache
+```
+
+### Basic Operations
+
+```bash
+# Check module status
+cat /sys/kernel/cma_cache/status
+
+# Allocate DMA memory blocks (returns allocation ID)
+echo "alloc 1M" > /sys/kernel/cma_cache/command     # 1MB block
+echo "alloc 16M" > /sys/kernel/cma_cache/command    # 16MB block
+echo "alloc 64M" > /sys/kernel/cma_cache/command    # 64MB block
+
+# Set cache attributes
+echo "uncache 1" > /sys/kernel/cma_cache/command    # Set allocation 1 as uncached
+echo "cache 1" > /sys/kernel/cma_cache/command      # Set allocation 1 as cached
+echo "toggle 2" > /sys/kernel/cma_cache/command     # Toggle cache state
+
+# Free allocations
+echo "free 1" > /sys/kernel/cma_cache/command
+echo "free 2" > /sys/kernel/cma_cache/command
+```
+
+### Size Specifications
+
+```bash
+# Various size formats supported
+echo "alloc 1048576" > /sys/kernel/cma_cache/command  # 1MB in bytes
+echo "alloc 4M" > /sys/kernel/cma_cache/command       # 4MB with suffix
+echo "alloc 64M" > /sys/kernel/cma_cache/command      # 64MB with suffix
+echo "alloc 1G" > /sys/kernel/cma_cache/command       # 1GB (if system supports)
+
+# Size limits: 1MB minimum, 256MB maximum
+# All sizes automatically aligned to page boundaries
+```
+
+### Permission Requirements (CMA Cache)
+
+For running tests without sudo, set appropriate permissions:
+
+```bash
+sudo chmod 666 /dev/cma_cache
+sudo chmod 666 /sys/kernel/cma_cache/command
+```
+
+### Status Display
+
+The status interface provides comprehensive allocation information:
+
+```
+DMA Cache Control Status
+========================
+Total allocations: 3/32
+Total allocated memory: 81920 bytes (80 MB)
+Cached allocations: 2
+Uncached allocations: 1
+
+Active Allocations:
+ID   Size       Pages  Virtual     Physical    Cache State
+---  ---------  -----  ----------  ----------  -----------
+  1      1024K    256  ffff888...  12345000    CACHED
+  2     16384K   4096  ffff889...  15678000    UNCACHED  
+  3     65536K  16384  ffff88a...  20000000    CACHED
+
+Size limits: 1024K - 262144K
+```
+
+### Memory Mapping Large Blocks
+
+```c
+#include <sys/mman.h>
+#include <fcntl.h>
+
+// Open device file
+int fd = open("/dev/cma_cache", O_RDWR);
+
+// Map allocation 1 (1MB block)
+// Note: offset = allocation_id * PAGE_SIZE for identification
+void *addr = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 1);
+
+// Access the large contiguous memory block
+volatile uint64_t *data = (volatile uint64_t *)addr;
+for (int i = 0; i < 131072; i++) {  // 1MB / 8 bytes
+    data[i] = 0x1234567890ABCDEF + i;
+}
+
+// Unmap and cleanup
+munmap(addr, 1024*1024);
+close(fd);
+```
+
+### CMA Test Program
+
+```bash
+# Build and run the CMA test program
+make cma_test
+sudo insmod cma_cache.ko
+sudo chmod 666 /dev/cma_cache /sys/kernel/cma_cache/command
+
+# Run different test modes
+./cma_test basic       # Basic allocation and cache control tests
+./cma_test performance # Performance comparison tests
+./cma_test stress      # Stress testing with multiple large allocations
+./cma_test all         # Run all test modes
+```
+
+**Example Test Output:**
+```
+CMA Cache Control Test Program
+==============================
+
+=== Basic Allocation Test ===
+Allocating 1M...
+Allocating 4M...
+Allocating 16M...
+Allocating 64M...
+
+=== Cache Control Test ===
+Setting allocation 1 as uncached...
+Setting allocation 2 as uncached...
+Toggling allocation 3 cache state...
+
+=== Performance Test ===
+Testing cached memory performance...
+Testing uncached memory performance...
+
+Performance Results (1000000 iterations):
+Cached memory:   0.452000 seconds (452.00 ns/access)
+Uncached memory: 2.840000 seconds (2840.00 ns/access)
+Performance ratio: 6.3x slower for uncached
+```
+
 ## Performance Comparison
 
-Both modules provide performance insights:
+All three modules provide performance insights for different use cases:
+
+### Static Cache Control (uncached_mem)
+- **Use case**: Basic cache behavior demonstration
+- **Granularity**: Entire allocation (4KB to 128MB)
+- **Performance**: One-time setup cost
+- **Interface**: Simple alloc/free commands
+- **Best for**: Educational understanding of cache impact
+
+### Dynamic Cache Control (dynamic_cache)  
+- **Use case**: Advanced cache research and analysis
+- **Granularity**: Individual pages (4KB each) + variable-size blocks
+- **Performance**: Runtime toggle costs (~100μs per page)
+- **Interface**: Command-based with real-time control
+- **Best for**: Fine-grained cache behavior research
+
+### DMA/CMA Cache Control (cma_cache)
+- **Use case**: Large contiguous memory management
+- **Granularity**: Large blocks (1MB to 256MB)
+- **Performance**: Guaranteed physical contiguity
+- **Interface**: DMA allocation with cache control
+- **Best for**: Device driver development, DMA buffer management
 
 ### Static Cache Control (uncached_mem)
 - **Use case**: Basic cache behavior demonstration
@@ -1090,15 +1293,21 @@ Both modules provide performance insights:
 
 ### Typical Results
 ```
-Static Allocation:
+Static Allocation (uncached_mem):
 - Cached access:    ~1.3 ns per operation
 - Uncached access:  ~70 ns per operation
 - Performance ratio: 50-70x slower for uncached
 
-Dynamic Control:
+Dynamic Control (dynamic_cache):
 - Cache toggle time: ~100 μs per page
 - TLB flush impact: ~10 μs per page
 - Per-operation timing: Similar to static
+
+DMA/CMA Allocation (cma_cache):
+- Large block efficiency: High throughput for sequential access
+- Physical contiguity: Zero fragmentation for device DMA
+- Cache control overhead: Similar per-page costs
+- Memory pressure: May trigger reclaim for large allocations
 ```
 
 ## Use Cases
