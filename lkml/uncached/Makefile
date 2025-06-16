@@ -20,7 +20,7 @@ all:
 # Clean target
 clean:
 	$(MAKE) -C $(KERNEL_BUILD) M=$(PWD) clean
-	rm -f timing_test dynamic_test
+	rm -f timing_test dynamic_test dynamic_size_test
 
 # Install module (requires root privileges)
 install:
@@ -50,6 +50,10 @@ timing_test: timing_test.c
 # Build dynamic cache test program
 dynamic_test: dynamic_test.c
 	gcc -o dynamic_test dynamic_test.c -lrt
+
+# Build dynamic cache size test program
+dynamic_size_test: dynamic_size_test.c
+	gcc -o dynamic_size_test dynamic_size_test.c
 
 # Run tests (requires module to be loaded)
 test: timing_test

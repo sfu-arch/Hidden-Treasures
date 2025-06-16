@@ -406,7 +406,14 @@ The `dynamic_cache` module extends the cache behavior demonstration by providing
 - Manages allocation/deallocation of individual pages to users
 - Automatic state restoration on cleanup
 
-### 3. **Enhanced User Interface**
+### 3. **Variable Size Block Allocation**
+- Supports allocating contiguous blocks of multiple pages
+- Size specification with K/M/G suffixes (e.g., "4K", "1M", "64M")
+- Automatic page alignment and size validation (4K min, 64M max)
+- Block-level operations (cache/uncache/free entire blocks)
+- Mixed allocation model (single pages + multi-page blocks)
+
+### 4. **Enhanced User Interface**
 - **Command interface**: `echo "command args" > /sys/kernel/dynamic_cache/command`
 - **Status monitoring**: Real-time view of all allocated pages
 - **Page map visualization**: Visual representation of allocation state
@@ -491,6 +498,61 @@ cat /sys/kernel/dynamic_cache/page_map
 echo "free 0" > /sys/kernel/dynamic_cache/command
 ```
 
+#### Permission Requirements
+```bash
+# Sysfs files need write permissions for non-root users:
+sudo chmod 666 /sys/kernel/dynamic_cache/command
+sudo chmod 666 /dev/dynamic_cache
+```
+
+### Variable Size Block Allocation
+
+The dynamic_cache module supports allocating contiguous blocks of multiple pages with size specifications:
+
+```bash
+# Allocate specific sizes (returns block ID for multi-page allocations)
+echo "alloc 4K" > /sys/kernel/dynamic_cache/command      # Single page (same as basic alloc)
+echo "alloc 8K" > /sys/kernel/dynamic_cache/command      # 2 contiguous pages  
+echo "alloc 1M" > /sys/kernel/dynamic_cache/command      # 256 contiguous pages
+echo "alloc 2048" > /sys/kernel/dynamic_cache/command    # 2048 bytes = 1 page (rounded up)
+
+# Supported size suffixes: K (kilobytes), M (megabytes), G (gigabytes)
+# Size limits: 4K minimum, 64M maximum
+# All sizes are automatically rounded up to page boundaries
+
+# Check allocation status (shows both individual pages and blocks)
+cat /sys/kernel/dynamic_cache/status
+
+# Block operations work on all pages in the block
+echo "uncache_block 1" > /sys/kernel/dynamic_cache/command  # Make entire block uncached
+echo "cache_block 1" > /sys/kernel/dynamic_cache/command    # Make entire block cached
+echo "free_block 1" > /sys/kernel/dynamic_cache/command     # Free entire block
+
+# Individual page operations within blocks still work
+echo "uncache 5" > /sys/kernel/dynamic_cache/command        # Make specific page uncached
+echo "cache 5" > /sys/kernel/dynamic_cache/command          # Make specific page cached
+```
+
+#### Block Status Display
+
+The status interface shows detailed information about allocated blocks:
+
+```
+Active Blocks:
+Block ID  Start  Pages  Size
+--------  -----  -----  ----
+       1      0      2    8K
+       2      5     64  256K
+
+Allocated Pages:
+ID   Virtual     PFN        Block    Cache State
+---  ----------  ---------  -------  -----------
+  0  ffff...001  123456789        1  UNCACHED
+  1  ffff...002  123456790        1  CACHED
+  5  ffff...006  123456794        2  UNCACHED
+...
+```
+
 ### Memory Mapping Individual Pages
 
 ```c
@@ -511,6 +573,50 @@ close(fd);
 
 ## Implementation Details
 
+### Block Management for Variable Size Allocation
+
+The module supports both single-page allocations and multi-page contiguous blocks:
+
+```c
+struct page_block {
+    int start_idx;                    // Starting page index in the pool
+    int num_pages;                    // Number of contiguous pages in this block
+    int block_id;                     // Unique block identifier
+    int allocated;                    // Whether this block is in use
+};
+
+static struct page_block blocks[MAX_PAGES]; // Block tracking for contiguous allocations
+static int current_block_id = 1;             // Next block ID to assign
+```
+
+**Size Parsing and Validation:**
+```c
+static int parse_size_string(const char *str, size_t *size)
+{
+    // Supports: raw bytes, K/M/G suffixes
+    // Example: "4K" -> 4096, "1M" -> 1048576
+    // Automatic page alignment: PAGE_ALIGN(size)
+    // Range validation: 4K minimum, 64M maximum
+}
+```
+
+**Multi-Page Allocation Algorithm:**
+```c
+static int allocate_user_pages(int num_pages)
+{
+    // 1. Find contiguous sequence of free pages
+    // 2. Allocate block tracking entry
+    // 3. Mark individual pages with block_id
+    // 4. Initialize block metadata
+    // 5. Return block_id for block operations
+}
+```
+
+**Block vs Page Operation Handling:**
+- **Single page commands**: `alloc`, `cache/uncache N`, `free N`  
+- **Block commands**: `alloc SIZE`, `cache/uncache_block ID`, `free_block ID`
+- **Mixed mode**: Pages within blocks can still be individually controlled
+
 ### Page Pool Management
 
 ```c
@@ -520,6 +626,7 @@ struct page_info {
     unsigned long pfn;            // Page frame number
     int is_cached;                // Current cache state (1=cached, 0=uncached)
     int allocated;                // Whether this slot is in use
+    int block_id;                 // Block ID if part of multi-page allocation (-1 for single)
 };
 
 static struct page_info pages[MAX_PAGES]; // Page tracking array

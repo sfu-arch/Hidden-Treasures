@@ -212,6 +212,52 @@ make timing_test
    sudo rmmod uncached_mem
    ```
 
+### Running Tests Without Sudo
+
+For convenience during testing, you can set permissions to allow non-root access to the module interfaces:
+
+**Option 1: Set permissions temporarily (testing only)**
+```bash
+# Load module first
+sudo insmod uncached_mem.ko
+
+# Set permissions for both device and sysfs interfaces
+sudo chmod 666 /dev/uncached_mem
+sudo chmod 666 /sys/kernel/uncached_mem/command
+
+# Now you can run tests without sudo
+echo "0 4K" > /sys/kernel/uncached_mem/command
+./timing_test
+echo "2" > /sys/kernel/uncached_mem/command
+```
+
+**Option 2: Use group permissions**
+```bash
+# Check current permissions
+ls -la /dev/uncached_mem
+ls -la /sys/kernel/uncached_mem/command
+
+# Add your user to appropriate group (usually root or adm)
+sudo usermod -a -G adm $USER
+# Log out and back in for group change to take effect
+```
+
+**Option 3: Use sudo only for module operations**
+```bash
+# Load module with sudo
+sudo insmod uncached_mem.ko
+
+# Set permissions once
+sudo chmod 666 /dev/uncached_mem && sudo chmod 666 /sys/kernel/uncached_mem/command
+
+# Run tests normally
+make timing_test
+./timing_test
+
+# Cleanup with sudo
+sudo rmmod uncached_mem
+```
+
 ### Advanced Usage Examples
 
 ```bash
@@ -637,11 +683,13 @@ The `dynamic_cache` module provides advanced per-page cache control functionalit
 ## Key Features
 
 - **Page-level cache control**: Individual pages can be cached/uncached dynamically
+- **Variable size allocation**: Support for allocating 1 to many contiguous pages with size suffixes (K/M/G)
+- **Block management**: Multi-page blocks with block-level operations (cache/uncache/free entire blocks)
 - **Runtime cache toggling**: Change cache attributes after allocation
 - **Page pool management**: Pre-allocated pool of 1024 pages (4MB total)
 - **Visual page mapping**: See allocation state with visual indicators
 - **Pattern testing**: Set and verify test patterns on specific pages
-- **Comprehensive monitoring**: Real-time status and allocation tracking
+- **Comprehensive monitoring**: Real-time status and allocation tracking with block information
 
 ## Project Structure (Extended)
 
@@ -653,7 +701,8 @@ uncached/
 ├── dynamic_cache.c     # Dynamic per-page cache control module  
 ├── Makefile           # Build system for both modules
 ├── timing_test.c      # Test program for uncached_mem module
-└── dynamic_test.c     # Comprehensive test program for dynamic_cache module
+├── dynamic_test.c     # Comprehensive test program for dynamic_cache module
+└── dynamic_size_test.c # Variable size allocation test program
 ```
 
 ## Dynamic Cache Module Usage
@@ -697,6 +746,78 @@ cat /sys/kernel/dynamic_cache/page_map
 
 # Free the page
 echo "free 0" > /sys/kernel/dynamic_cache/command
+```
+
+### Variable Size Allocation
+
+The dynamic_cache module supports allocating contiguous blocks of multiple pages:
+
+```bash
+# Single page allocation (default)
+echo "alloc" > /sys/kernel/dynamic_cache/command          # 4K (1 page)
+echo "alloc 4K" > /sys/kernel/dynamic_cache/command       # Explicit 4K
+
+# Multi-page block allocation (returns block ID)  
+echo "alloc 8K" > /sys/kernel/dynamic_cache/command       # 2 pages
+echo "alloc 64K" > /sys/kernel/dynamic_cache/command      # 16 pages
+echo "alloc 1M" > /sys/kernel/dynamic_cache/command       # 256 pages
+echo "alloc 4194304" > /sys/kernel/dynamic_cache/command  # 4M in bytes
+
+# Size specifications:
+# - Raw bytes: automatically rounded up to page boundary
+# - K suffix: kilobytes (e.g., 16K = 16384 bytes)
+# - M suffix: megabytes (e.g., 2M = 2097152 bytes)  
+# - G suffix: gigabytes (e.g., 1G = 1073741824 bytes)
+# - Limits: 4K minimum, 64M maximum
+
+# Check allocation status (shows blocks and individual pages)
+cat /sys/kernel/dynamic_cache/status
+```
+
+**Block vs Page Operations:**
+```bash
+# Block operations (affect all pages in a block)
+echo "cache_block 1" > /sys/kernel/dynamic_cache/command    # Cache entire block
+echo "uncache_block 1" > /sys/kernel/dynamic_cache/command  # Uncache entire block  
+echo "free_block 1" > /sys/kernel/dynamic_cache/command     # Free entire block
+
+# Individual page operations (work within blocks too)
+echo "cache 5" > /sys/kernel/dynamic_cache/command          # Cache specific page
+echo "uncache 5" > /sys/kernel/dynamic_cache/command        # Uncache specific page
+echo "free 5" > /sys/kernel/dynamic_cache/command           # Free specific page
+```
+
+**Example Status Output:**
+```
+Active blocks: 2
+
+Active Blocks:
+Block ID  Start  Pages  Size
+--------  -----  -----  ----
+       1      0      2    8K
+       2      8     64  256K
+
+Allocated Pages:
+ID   Virtual     PFN        Block    Cache State
+---  ----------  ---------  -------  -----------
+  0  ffff888...  123456789        1  CACHED
+  1  ffff888...  123456790        1  UNCACHED
+  8  ffff888...  123456798        2  CACHED
+...
+```
+
+### Permission Requirements (Dynamic Cache)
+
+For running tests without sudo, set appropriate permissions:
+
+```bash
+# Set permissions for both device and sysfs interfaces
+sudo chmod 666 /dev/dynamic_cache
+sudo chmod 666 /sys/kernel/dynamic_cache/command
+
+# Now you can run operations without sudo
+echo "alloc" > /sys/kernel/dynamic_cache/command
+./dynamic_test
 ```
 
 ### Sysfs Interface (Dynamic Cache)
@@ -894,6 +1015,63 @@ echo "free 2" > /sys/kernel/dynamic_cache/command
 sudo rmmod dynamic_cache
 ```
 
+### Variable Size Allocation Testing
+
+The `dynamic_size_test.c` program demonstrates variable size allocation and block management:
+
+```bash
+# Build and run the size test
+make dynamic_size_test
+sudo insmod dynamic_cache.ko
+sudo chmod 666 /dev/dynamic_cache /sys/kernel/dynamic_cache/command
+./dynamic_size_test
+```
+
+**Example Test Sequence:**
+```bash
+# Test various block sizes
+echo "alloc 4K" > /sys/kernel/dynamic_cache/command     # Single page
+echo "alloc 64K" > /sys/kernel/dynamic_cache/command    # 16-page block  
+echo "alloc 1M" > /sys/kernel/dynamic_cache/command     # 256-page block
+
+# Check allocation status
+cat /sys/kernel/dynamic_cache/status
+
+# Block-level operations
+echo "uncache_block 2" > /sys/kernel/dynamic_cache/command  # Uncache 1M block
+echo "cache_block 2" > /sys/kernel/dynamic_cache/command    # Re-cache 1M block
+
+# Individual page operations within blocks
+echo "uncache 16" > /sys/kernel/dynamic_cache/command      # Uncache one page in 64K block
+
+# Free blocks
+echo "free_block 1" > /sys/kernel/dynamic_cache/command    # Free 64K block
+echo "free_block 2" > /sys/kernel/dynamic_cache/command    # Free 1M block
+```
+
+**Expected Status Output:**
+```
+Active blocks: 3
+
+Active Blocks:
+Block ID  Start  Pages  Size
+--------  -----  -----  ----
+       1      0      1    4K
+       2      1     16   64K  
+       3     17    256    1M
+
+Allocated Pages:
+ID   Virtual     PFN        Block    Cache State
+---  ----------  ---------  -------  -----------
+  0  ffff888...  123456789   single  CACHED
+  1  ffff888...  123456790        2  CACHED
+  2  ffff888...  123456791        2  CACHED
+...
+ 17  ffff888...  123456807        3  UNCACHED
+ 18  ffff888...  123456808        3  UNCACHED
+...
+```
+
 ## Performance Comparison
 
 Both modules provide performance insights:
@@ -948,6 +1126,7 @@ The Makefile supports both modules:
 make all              # Build both kernel modules
 make timing_test      # Build static cache test program
 make dynamic_test     # Build dynamic cache test program
+make dynamic_size_test # Build variable size allocation test program
 make test             # Test uncached_mem module
 make dynamic_test_run # Test dynamic_cache module  
 make test_all         # Test both modules
@@ -1087,6 +1266,7 @@ The Makefile supports both modules and all tests:
 make all              # Build both kernel modules
 make timing_test      # Build static cache test program
 make dynamic_test     # Build dynamic cache test program
+make dynamic_size_test # Build variable size allocation test program
 make test             # Test uncached_mem module
 make dynamic_test_run # Test dynamic_cache module (fully automated)
 make test_all         # Test both modules
@@ -1125,6 +1305,43 @@ sudo rmmod dynamic_cache
 6. **Performance**: Measure cached vs uncached access times
 7. **Cleanup**: Verify proper resource cleanup on unload
 
+## Setting Up Both Modules for Non-Root Testing
+
+To run tests for both modules without requiring sudo for each command, set up permissions once after loading the modules:
+
+### Complete Setup Script
+```bash
+# Build both modules
+make all
+
+# Load both modules
+sudo insmod uncached_mem.ko
+sudo insmod dynamic_cache.ko
+
+# Set permissions for uncached_mem module
+sudo chmod 666 /dev/uncached_mem
+sudo chmod 666 /sys/kernel/uncached_mem/command
+
+# Set permissions for dynamic_cache module  
+sudo chmod 666 /dev/dynamic_cache
+sudo chmod 666 /sys/kernel/dynamic_cache/command
+
+# Now you can run all tests without sudo
+echo "0 4K" > /sys/kernel/uncached_mem/command
+./timing_test
+echo "alloc" > /sys/kernel/dynamic_cache/command
+./dynamic_test
+
+# Cleanup (requires sudo)
+sudo rmmod uncached_mem dynamic_cache
+```
+
+### One-Line Permission Setup
+```bash
+# After loading modules, set all permissions at once:
+sudo chmod 666 /dev/uncached_mem /sys/kernel/uncached_mem/command /dev/dynamic_cache /sys/kernel/dynamic_cache/command
+```
+
 ## License
 
 GPL v2 - See individual source files for details.
@@ -1137,6 +1354,4 @@ This project demonstrates:
 - **CPU cache behavior** and performance implications  
 - **Architecture-specific programming** with portable APIs
 - **Comprehensive testing** and debugging practices
-
-For detailed technical explanations, see `DESIGN.md`.
 
