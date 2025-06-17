@@ -48,71 +48,97 @@ nvidia-smi
 git clone <your-repo-url>
 cd cuda-convolution-lab
 
-# Build with Make
-make all
+### 1. Environment Setup
 
-# Or build with CMake
-mkdir build && cd build
-cmake ..
+```bash
+# Verify CUDA installation
+nvcc --version
+nvidia-smi
+
+# Clone and build project
+git clone <your-repo-url>
+cd cuda-convolution-lab
+
+# Build with CMake (recommended)
+mkdir Build && cd Build
+cmake .. -DCMAKE_CUDA_ARCHITECTURES=89  # For RTX 4090
 make
+
+# Or build with Make
+make all
 ```
 
 ### 2. Run Test Program
 
 ```bash
-# Test CUDA setup
-./test_cuda
+# Test basic functionality (CPU only to avoid GPU hangs)
+./Build/conv_benchmark --width 512 --height 512 --kernel 3 --cpu-only --verbose
 
-# Run basic convolution benchmark
-./conv_benchmark --input data/input/lenna_512x512.png --kernel data/kernels/blur_3x3.txt
+# Test GPU functionality (small size first)
+./Build/conv_benchmark --width 256 --height 256 --kernel 3 --gpu-only --verbose
+
+# Run comprehensive benchmark
+./Build/conv_benchmark --width 1024 --height 1024 --kernel 5 --verbose
 ```
 
 ### 3. Profile Performance
 
 ```bash
-# Profile with Nsight Compute
-./tools/profile.sh
+# Profile with automated script
+./tools/profile.sh --mode summary --size 512 --kernel 3
+
+# View profiling results
+ls profiling_results/
+cat profiling_results/profiling_report.md
 ```
 
 ## 📁 Project Structure
 
 ```
 cuda-convolution-lab/
-├── README.md                          # This file
+├── README.md                          # Project overview and quick start
+├── DESIGN.md                          # 📋 Detailed design document and roadmap
 ├── Makefile                           # Build automation
-├── CMakeLists.txt                     # Alternative build system
+├── CMakeLists.txt                     # CMake build system
+├── profiling_results/                 # 📊 Generated profiling data and reports
+│   ├── profiling_report.md            # Executive summary
+│   ├── roofline_analysis.txt          # Performance bounds analysis
+│   ├── memory_analysis.md             # Memory optimization recommendations
+│   └── *.nsys-rep                     # Nsight Systems timeline data
 ├── data/
 │   ├── input/                         # Test images (add your own PNGs)
 │   ├── kernels/                       # Convolution filter definitions
 │   └── reference/                     # Expected output images
 ├── src/
-│   ├── common/                        # Shared utilities and headers
+│   ├── common/                        # ✅ Shared utilities and headers
 │   │   ├── cuda_helpers.h             # CUDA error checking macros
 │   │   ├── timer.h                    # Performance timing utilities
 │   │   ├── image_io.h                 # Image loading/saving functions
 │   │   └── utils.h                    # General utility functions
-│   ├── cpu/
-│   │   └── conv_cpu.cpp               # CPU reference implementation
-│   ├── gpu/
-│   │   ├── conv_naive.cu              # Basic GPU kernel
-│   │   ├── conv_coalesced.cu          # Memory coalescing optimization
-│   │   ├── conv_shared.cu             # Shared memory tiling
-│   │   ├── conv_constant.cu           # Constant memory optimization
-│   │   ├── conv_texture.cu            # Texture memory optimization
-│   │   └── conv_async.cu              # Asynchronous memory operations
-│   └── main.cpp                       # Driver program and benchmarking
+│   ├── cpu/                           # ✅ CPU reference implementations
+│   │   └── conv_cpu.cpp               # Sequential/OpenMP/Optimized versions
+│   ├── gpu/                           # GPU kernel implementations
+│   │   ├── conv_naive.cu              # ✅ Basic GPU kernel (needs correctness fix)
+│   │   ├── conv_coalesced.cu          # ⏳ Memory coalescing optimization
+│   │   ├── conv_shared.cu             # ⏳ Shared memory tiling
+│   │   ├── conv_constant.cu           # ⏳ Constant memory optimization
+│   │   ├── conv_texture.cu            # ⏳ Texture memory optimization
+│   │   └── conv_async.cu              # ⏳ Asynchronous memory operations
+│   └── main.cpp                       # ✅ Driver program and benchmarking
 ├── tests/
 │   ├── unit_tests.cpp                 # Correctness verification
 │   └── performance_tests.sh           # Automated benchmarking
 ├── tools/
-│   ├── profile.sh                     # Nsight Compute automation
-│   ├── roofline.py                    # Performance analysis scripts
-│   └── visualize.py                   # Results plotting
+│   ├── profile.sh                     # ✅ Automated profiling script
+│   ├── roofline.py                    # ⏳ Performance analysis scripts
+│   └── visualize.py                   # ⏳ Results plotting
 └── docs/
     ├── lab_report_template.md         # Report structure guide
     ├── optimization_guide.md          # Step-by-step optimization hints
     └── profiling_guide.md             # Nsight Compute tutorial
 ```
+
+**Legend**: ✅ Implemented | ⏳ Planned | ⚠️ Needs Fix
 
 ## 🎯 Implementation Milestones
 
@@ -162,6 +188,57 @@ ncu --metrics sm__warps_active.avg.pct_of_peak ./conv_benchmark
 | Shared Memory | 10-20x  | ~70%              | ~60%        |
 | Advanced      | 25-40x  | ~85%              | ~80%        |
 
+## 📊 **Current Profiling Results** (Updated June 16, 2025)
+
+### System Configuration
+- **GPU**: NVIDIA GeForce RTX 4090 (Compute Capability 8.9)
+- **Memory**: 24.56 GB total, 23.84 GB free
+- **CUDA**: Version 12.6.77, Driver 560.35.03
+- **Peak Memory Bandwidth**: ~1008 GB/s theoretical
+
+### Performance Baseline (256x256 image, 3x3 kernel)
+
+| Implementation | Execution Time | Throughput | Memory BW | Speedup |
+|---------------|----------------|------------|-----------|---------|
+| CPU Sequential | 1.24 ms | 3.81 GFLOPS | 14.97 GB/s | 1.0x |
+| CPU OpenMP | 8.11 ms | 0.58 GFLOPS | 2.29 GB/s | 0.15x |
+| CPU Optimized | 5.88 ms | 0.80 GFLOPS | 3.16 GB/s | 0.21x |
+| **GPU Naive** | **80.27 ms** | **0.015 GFLOPS** | **0.058 GB/s** | **0.015x** |
+
+### 🚨 **Key Findings from Profiling**
+- **Critical Issue**: GPU implementation is **60x slower** than CPU!
+- **Root Cause**: Memory allocation dominates 99.8% of execution time
+- **Kernel Performance**: Actual compute is very fast (2.272 µs)
+- **Memory Utilization**: Only 0.006% of peak bandwidth used
+- **Optimization Potential**: 1000x+ improvement possible
+
+### Profiling Data (Nsight Systems Analysis)
+```
+Time Distribution:
+- cudaMalloc: 99.8% (88.14 ms)
+- cudaMemcpy: 0.1% (0.105 ms) 
+- Kernel execution: 0.001% (0.002 ms)
+- cudaFree: 0.04% (0.038 ms)
+
+Memory Transfers:
+- Host-to-Device: 13.25 KB
+- Device-to-Host: 12.51 KB
+- Total: 25.76 KB
+
+Kernel Metrics:
+- Grid: (16,16) blocks
+- Block size: (16,16) threads  
+- Total threads: 65,536
+- Execution time: 2.272 µs
+```
+
+### 🎯 **Immediate Optimization Targets**
+1. **Memory Management**: Pre-allocate GPU memory to eliminate malloc overhead
+2. **Memory Coalescing**: Reorganize access patterns for 50-100x bandwidth improvement
+3. **Shared Memory**: Implement tiling for 10-20x compute efficiency
+4. **Constant Memory**: Store kernel in constant cache for 2-3x access speed
+5. **Algorithm Correctness**: Fix the "INCORRECT" result bug in GPU implementation
+
 ## 🛠️ Common Issues and Solutions
 
 ### Environment Setup
@@ -189,7 +266,22 @@ nvcc --help | grep -A 10 "gpu-architecture"
     } while(0)
 ```
 
-## 📚 Learning Resources
+## 📚 Documentation
+
+### 📋 **[DESIGN.md](./DESIGN.md)** - Comprehensive Technical Documentation
+- **Architecture Overview**: System design and component relationships
+- **Implementation Status**: Current progress and completion status  
+- **Performance Analysis**: Detailed profiling results and bottleneck analysis
+- **Optimization Roadmap**: Phase-by-phase improvement strategy
+- **Technical Specifications**: Build requirements and API details
+
+### 📊 **[Profiling Results](./profiling_results/)** - Live Performance Data
+- **Executive Summary**: `profiling_report.md` 
+- **Memory Analysis**: `memory_analysis.md` with optimization recommendations
+- **Roofline Analysis**: `roofline_analysis.txt` with performance bounds
+- **Timeline Data**: `.nsys-rep` files for Nsight Systems visualization
+
+### Learning Resources
 
 ### Essential Reading
 - [CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/) - Chapters 3-6

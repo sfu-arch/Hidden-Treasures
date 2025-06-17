@@ -19,11 +19,11 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 -lineinfo")
 
 # Set CUDA architecture - adjust for your GPU
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 75)  # RTX 20/30 series
+    set(CMAKE_CUDA_ARCHITECTURES 89)  # RTX 40 series (RTX 4090)
     # Uncomment appropriate line for your GPU:
     # set(CMAKE_CUDA_ARCHITECTURES 61)  # GTX 10 series
     # set(CMAKE_CUDA_ARCHITECTURES 86)  # RTX 30 series  
-    # set(CMAKE_CUDA_ARCHITECTURES 89)  # RTX 40 series
+    # set(CMAKE_CUDA_ARCHITECTURES 75)  # RTX 20 series
 endif()
 
 # Include directories
@@ -44,11 +44,6 @@ set(CPU_SOURCES
 
 set(GPU_SOURCES
     src/gpu/conv_naive.cu
-    src/gpu/conv_coalesced.cu
-    src/gpu/conv_shared.cu
-    src/gpu/conv_constant.cu
-    src/gpu/conv_texture.cu
-    src/gpu/conv_async.cu
 )
 
 set(TEST_SOURCES

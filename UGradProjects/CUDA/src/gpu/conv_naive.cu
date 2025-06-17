@@ -121,7 +121,7 @@ void convolution2D_naive(const float* input, float* output, int width, int heigh
     CUDA_CHECK(cudaFree(d_kernel));
     
     // Print performance metrics
-    double elapsed_ms = timer.getElapsedMs();
+    double elapsed_ms = timer.last_measurement();
     std::cout << "Naive GPU Convolution took: " << elapsed_ms << " ms" << std::endl;
     
     // Calculate and display performance metrics

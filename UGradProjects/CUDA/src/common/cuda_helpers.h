@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+#include <algorithm>
 
 /**
  * @file cuda_helpers.h
@@ -215,7 +216,7 @@ inline void cuda_memcpy_d2h_checked(T* dst, const T* src, size_t size, const cha
  */
 inline dim3 calculate_grid_1d(int total_threads, int block_size = 256) {
     // Ensure block size is reasonable
-    block_size = min(block_size, 1024);
+    block_size = std::min(block_size, 1024);
     
     int grid_size = (total_threads + block_size - 1) / block_size;
     return dim3(grid_size);
@@ -231,8 +232,8 @@ inline dim3 calculate_grid_1d(int total_threads, int block_size = 256) {
  */
 inline std::pair<dim3, dim3> calculate_grid_2d(int width, int height, int block_x = 16, int block_y = 16) {
     // Ensure block dimensions are reasonable
-    block_x = min(block_x, 32);
-    block_y = min(block_y, 32);
+    block_x = std::min(block_x, 32);
+    block_y = std::min(block_y, 32);
     
     int grid_x = (width + block_x - 1) / block_x;
     int grid_y = (height + block_y - 1) / block_y;

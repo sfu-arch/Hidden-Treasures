@@ -8,6 +8,9 @@
 #include <iomanip>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
+#include <fstream>
+#include <filesystem>
 
 /**
  * @file utils.h
@@ -418,6 +421,21 @@ inline std::string create_output_filename(const std::string& input_filename,
                input_filename.substr(pos);
     }
     return input_filename + "_" + suffix;
+}
+
+/**
+ * @brief Create a directory if it doesn't exist
+ * @param path Directory path to create
+ * @return True if directory was created or already exists
+ */
+inline bool createDirectory(const std::string& path) {
+    try {
+        std::filesystem::create_directories(path);
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to create directory: " << path << " - " << e.what() << std::endl;
+        return false;
+    }
 }
 
 // =============================================================================

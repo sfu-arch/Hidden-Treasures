@@ -31,7 +31,7 @@ void convolution2D(const float* input, float* output, int width, int height,
     
     timer.stop();
     std::cout << "CPU Convolution (" << getModeString(mode) << ") took: " 
-              << timer.getElapsedMs() << " ms" << std::endl;
+              << timer.last_measurement() << " ms" << std::endl;
 }
 
 void convolution2D_sequential(const float* input, float* output, int width, int height,

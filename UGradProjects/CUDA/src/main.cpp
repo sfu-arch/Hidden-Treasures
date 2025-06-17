@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <cmath>
+#include <iomanip>
 
 // Common utilities
 #include "common/utils.h"
@@ -77,7 +78,7 @@ void runCPUBenchmarks(const std::vector<float>& input, std::vector<float>& outpu
         timer.stop();
         
         if (verbose) {
-            cpu::printPerformanceMetrics(width, height, kernel_size, timer.getElapsedMs());
+            cpu::printPerformanceMetrics(width, height, kernel_size, timer.last_measurement());
         }
     }
     
@@ -91,7 +92,7 @@ void runCPUBenchmarks(const std::vector<float>& input, std::vector<float>& outpu
         timer.stop();
         
         if (verbose) {
-            cpu::printPerformanceMetrics(width, height, kernel_size, timer.getElapsedMs());
+            cpu::printPerformanceMetrics(width, height, kernel_size, timer.last_measurement());
         }
     }
     
@@ -105,7 +106,7 @@ void runCPUBenchmarks(const std::vector<float>& input, std::vector<float>& outpu
         timer.stop();
         
         if (verbose) {
-            cpu::printPerformanceMetrics(width, height, kernel_size, timer.getElapsedMs());
+            cpu::printPerformanceMetrics(width, height, kernel_size, timer.last_measurement());
         }
     }
 }
@@ -117,13 +118,13 @@ void runGPUBenchmarks(const std::vector<float>& input, std::vector<float>& outpu
     std::cout << "\n=== GPU Benchmarks ===" << std::endl;
     
     // Check CUDA availability
-    if (!cuda::checkCudaCapability()) {
+    if (!check_cuda_availability()) {
         std::cerr << "CUDA not available or insufficient capability" << std::endl;
         return;
     }
     
     if (verbose) {
-        cuda::printDeviceInfo();
+        print_cuda_device_info();
         std::cout << "Running GPU convolution implementations..." << std::endl;
     }
     
@@ -137,8 +138,8 @@ void runGPUBenchmarks(const std::vector<float>& input, std::vector<float>& outpu
         timer.stop();
         
         // Verify correctness against CPU result
-        bool correct = image_io::compareImages(output.data(), output_gpu.data(), 
-                                             width, height, 1e-4f);
+        bool correct = compare_arrays(output.data(), output_gpu.data(), 
+                                    width, height, 1e-4f);
         std::cout << "GPU Naive result: " << (correct ? "CORRECT" : "INCORRECT") << std::endl;
         
         if (verbose) {
@@ -161,15 +162,17 @@ void saveResults(const std::vector<float>& input, const std::vector<float>& outp
     
     // Save input image (if not from file)
     std::string input_path = output_dir + "/input.png";
-    if (image_io::saveImage(input.data(), width, height, input_path)) {
-        std::cout << "Saved input image: " << input_path << std::endl;
-    }
+    // TODO: Implement saveImage wrapper for raw arrays
+    // if (image_io::saveImage(input.data(), width, height, input_path)) {
+    //     std::cout << "Saved input image: " << input_path << std::endl;
+    // }
     
     // Save output image
     std::string output_path = output_dir + "/output.png";
-    if (image_io::saveImage(output.data(), width, height, output_path)) {
-        std::cout << "Saved output image: " << output_path << std::endl;
-    }
+    // TODO: Implement saveImage wrapper for raw arrays
+    // if (image_io::saveImage(output.data(), width, height, output_path)) {
+    //     std::cout << "Saved output image: " << output_path << std::endl;
+    // }
 }
 
 int main(int argc, char* argv[]) {
@@ -248,27 +251,54 @@ int main(int argc, char* argv[]) {
     
     if (!input_file.empty()) {
         std::cout << "Loading input image: " << input_file << std::endl;
-        if (!image_io::loadImage(input_file, input.data(), width, height)) {
-            std::cerr << "Failed to load input image" << std::endl;
-            return 1;
+        // TODO: Implement loadImage wrapper for raw arrays
+        std::cerr << "Image loading not yet implemented, using test pattern instead" << std::endl;
+        // Fill with test pattern instead
+        for (int i = 0; i < width * height; ++i) {
+            input[i] = ((i / width + i % width) % 2) ? 1.0f : 0.0f;  // Simple checkerboard
         }
     } else {
         std::cout << "Generating test pattern..." << std::endl;
-        image_io::generateTestPattern(input.data(), width, height, 
-                                    image_io::TestPattern::CHECKERBOARD);
+        // Simple checkerboard pattern
+        for (int i = 0; i < width * height; ++i) {
+            input[i] = ((i / width + i % width) % 2) ? 1.0f : 0.0f;
+        }
     }
     
     // Prepare convolution kernel
     std::vector<float> kernel(kernel_size * kernel_size);
-    image_io::generateKernel(kernel.data(), kernel_size, image_io::KernelType::GAUSSIAN);
+    // Simple Gaussian-like kernel (normalized)
+    float center = kernel_size / 2.0f;
+    float sum = 0.0f;
+    for (int y = 0; y < kernel_size; ++y) {
+        for (int x = 0; x < kernel_size; ++x) {
+            float dx = x - center;
+            float dy = y - center;
+            float value = std::exp(-(dx*dx + dy*dy) / (2.0f * 1.0f * 1.0f));
+            kernel[y * kernel_size + x] = value;
+            sum += value;
+        }
+    }
+    // Normalize
+    for (int i = 0; i < kernel_size * kernel_size; ++i) {
+        kernel[i] /= sum;
+    }
     
     if (verbose) {
         std::cout << "\nKernel (center 3x3):" << std::endl;
-        image_io::printKernel(kernel.data(), kernel_size, 3);
+        // Simple kernel printing
+        int print_size = std::min(3, kernel_size);
+        int start = (kernel_size - print_size) / 2;
+        for (int y = start; y < start + print_size; ++y) {
+            for (int x = start; x < start + print_size; ++x) {
+                std::cout << std::setw(8) << std::setprecision(4) << kernel[y * kernel_size + x] << " ";
+            }
+            std::cout << std::endl;
+        }
     }
     
     // Create output directory
-    utils::createDirectory(output_dir);
+    createDirectory(output_dir);
     
     // Run benchmarks
     if (!gpu_only) {

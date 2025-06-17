@@ -12,14 +12,14 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default parameters
-EXECUTABLE="./build/cuda_convolution"
+EXECUTABLE="./Build/conv_benchmark"
 OUTPUT_DIR="./profiling_results"
 PROFILE_MODE="summary"
 IMAGE_SIZE=1024
 KERNEL_SIZE=7
 
 # Profiling tools
-NVPROF="nvprof"
+NVPROF="nsys"
 NSIGHT_COMPUTE="ncu"
 NSIGHT_SYSTEMS="nsys"
 
@@ -114,7 +114,7 @@ profile_with_nvprof() {
         "summary")
             $NVPROF --print-gpu-summary \
                     --log-file "${output_prefix}.log" \
-                    $EXECUTABLE --gpu-only --width $IMAGE_SIZE --height $IMAGE_SIZE --kernel $KERNEL_SIZE
+                    $EXECUTABLE  --width $IMAGE_SIZE --height $IMAGE_SIZE --kernel $KERNEL_SIZE
             ;;
         "detailed")
             $NVPROF --print-gpu-summary \

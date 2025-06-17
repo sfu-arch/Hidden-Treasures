@@ -341,3 +341,12 @@ inline void validate_timing_consistency(const CPUTimer::Statistics& stats, doubl
                   << stats.max << " ms vs expected: " << outlier_range << " ms)" << std::endl;
     }
 }
+
+// =============================================================================
+// Type Aliases for Convenience
+// =============================================================================
+
+/**
+ * @brief Simple Timer alias for CPUTimer for backward compatibility
+ */
+using Timer = CPUTimer;

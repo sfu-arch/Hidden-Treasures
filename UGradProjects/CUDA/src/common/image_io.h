@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <memory>
+#include <fstream>
 
 /**
  * @file image_io.h
@@ -281,6 +282,26 @@ inline ImageData create_difference_image(const ImageData& img1, const ImageData&
     }
     
     return diff_image;
+}
+
+/**
+ * @brief Compare two raw float arrays (for backward compatibility)
+ * @param data1 First array
+ * @param data2 Second array
+ * @param width Image width
+ * @param height Image height
+ * @param tolerance Comparison tolerance
+ * @return True if arrays are similar within tolerance
+ */
+inline bool compare_arrays(const float* data1, const float* data2, 
+                          int width, int height, float tolerance = 1e-4f) {
+    int total_elements = width * height;
+    for (int i = 0; i < total_elements; ++i) {
+        if (std::abs(data1[i] - data2[i]) > tolerance) {
+            return false;
+        }
+    }
+    return true;
 }
 
 // =============================================================================
