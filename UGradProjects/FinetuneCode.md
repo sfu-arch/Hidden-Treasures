@@ -1,10 +1,5 @@
 # Fine-tuning and Reinforcement Learning for CPU Memory Behavior Optimization
 
-> **A Comprehensive Research Framework for Training LLMs in Memory-Efficient Code Generation**
-
-## 📚 Table of Contents
-- [Fine-tuning and Reinforcement Learning for CPU Memory Behavior Optimization](#fine-tuning-and-reinforcement-learning-for-cpu-memory-behavior-optimization)
-  - [📚 Table of Contents](#-table-of-contents)
 - [Fine-tuning and Reinforcement Learning for CPU Memory Behavior Optimization](#fine-tuning-and-reinforcement-learning-for-cpu-memory-behavior-optimization-1)
   - [🎯 Project Overview](#-project-overview)
     - [Key Research Questions](#key-research-questions)
