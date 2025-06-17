@@ -1,0 +1,6 @@
+# Sobel Y kernel for vertical edge detection
+# Size: 3x3
+3
+-1.0 -2.0 -1.0
+ 0.0  0.0  0.0
+ 1.0  2.0  1.0

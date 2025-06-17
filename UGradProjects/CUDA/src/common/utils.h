@@ -498,3 +498,116 @@ public:
 
 // Global configuration instance
 extern Config g_config;
+
+// =============================================================================
+// Kernel Loading Functions
+// =============================================================================
+
+/**
+ * @brief Load convolution kernel from text file
+ * @param filename Path to kernel file
+ * @return Vector containing kernel data in row-major order
+ * 
+ * File format:
+ * Line 1: kernel_size (integer)
+ * Next kernel_size lines: kernel_size float values per line
+ */
+inline std::vector<float> load_kernel(const std::string& filename) {
+    std::vector<float> kernel;
+    std::ifstream file(filename);
+    
+    if (!file.is_open()) {
+        std::cerr << "❌ Error: Could not open kernel file '" << filename << "'" << std::endl;
+        return kernel;
+    }
+    
+    std::string line;
+    int kernel_size = 0;
+    int line_count = 0;
+    
+    while (std::getline(file, line)) {
+        // Skip comments and empty lines
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        
+        if (kernel_size == 0) {
+            // First non-comment line should be the kernel size
+            kernel_size = std::stoi(line);
+            kernel.reserve(kernel_size * kernel_size);
+            continue;
+        }
+        
+        // Parse kernel values
+        std::istringstream iss(line);
+        float value;
+        while (iss >> value) {
+            kernel.push_back(value);
+        }
+        
+        line_count++;
+        if (line_count >= kernel_size) {
+            break;
+        }
+    }
+    
+    file.close();
+    
+    // Validate kernel
+    if (kernel.size() != static_cast<size_t>(kernel_size * kernel_size)) {
+        std::cerr << "❌ Error: Invalid kernel file format. Expected " 
+                  << kernel_size * kernel_size << " values, got " << kernel.size() << std::endl;
+        kernel.clear();
+        return kernel;
+    }
+    
+    std::cout << "✅ Loaded " << kernel_size << "x" << kernel_size 
+              << " kernel from " << filename << std::endl;
+    
+    return kernel;
+}
+
+/**
+ * @brief Create a standard convolution kernel
+ * @param type Kernel type ("gaussian", "sobel_x", "sobel_y", "laplacian")
+ * @param size Kernel size (must be odd)
+ * @return Vector containing kernel data
+ */
+inline std::vector<float> create_standard_kernel(const std::string& type, int size = 3) {
+    std::vector<float> kernel;
+    
+    if (type == "gaussian" && size == 3) {
+        kernel = {
+            1.0f/16, 2.0f/16, 1.0f/16,
+            2.0f/16, 4.0f/16, 2.0f/16,
+            1.0f/16, 2.0f/16, 1.0f/16
+        };
+    }
+    else if (type == "sobel_x" && size == 3) {
+        kernel = {
+            -1.0f, 0.0f, 1.0f,
+            -2.0f, 0.0f, 2.0f,
+            -1.0f, 0.0f, 1.0f
+        };
+    }
+    else if (type == "sobel_y" && size == 3) {
+        kernel = {
+            -1.0f, -2.0f, -1.0f,
+             0.0f,  0.0f,  0.0f,
+             1.0f,  2.0f,  1.0f
+        };
+    }
+    else if (type == "laplacian" && size == 3) {
+        kernel = {
+             0.0f, -1.0f,  0.0f,
+            -1.0f,  4.0f, -1.0f,
+             0.0f, -1.0f,  0.0f
+        };
+    }
+    else {
+        std::cerr << "❌ Error: Unknown kernel type '" << type 
+                  << "' or unsupported size " << size << std::endl;
+    }
+    
+    return kernel;
+}

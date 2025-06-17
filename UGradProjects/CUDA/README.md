@@ -81,7 +81,22 @@ make all
 ./Build/conv_benchmark --width 1024 --height 1024 --kernel 5 --verbose
 ```
 
-### 3. Profile Performance
+### 3. Real Image Processing
+
+The project now supports real image processing using OpenCV with edge detection kernels:
+
+```bash
+# Process real images with Sobel edge detection
+./Build/conv_benchmark --input data/input/test_image.png --kernel-file data/kernels/sobel_x_3x3.txt --verbose
+
+# Use Sobel Y for vertical edge detection
+./Build/conv_benchmark --input data/input/gradient.png --kernel-file data/kernels/sobel_y_3x3.txt --verbose
+
+# Compare CPU vs GPU with real images
+./Build/conv_benchmark --input data/input/test_image.png --kernel-file data/kernels/sobel_x_3x3.txt --output ./results --verbose
+```
+
+### 4. Profile Performance
 
 ```bash
 # Profile with automated script
@@ -90,6 +105,108 @@ make all
 # View profiling results
 ls profiling_results/
 cat profiling_results/profiling_report.md
+```
+
+## 🖼️ Image Processing Features
+
+### Supported Image Operations
+
+The convolution lab now supports real image processing with **OpenCV integration**, enabling practical computer vision applications alongside performance optimization learning.
+
+#### Edge Detection Filters
+- **Sobel X Filter** (`data/kernels/sobel_x_3x3.txt`): Detects horizontal edges
+- **Sobel Y Filter** (`data/kernels/sobel_y_3x3.txt`): Detects vertical edges  
+- **Custom Kernels**: Add your own `.txt` files with space-separated values
+
+#### Image Processing Workflow
+1. **Load** - Supports common formats (PNG, JPG, BMP) via OpenCV
+2. **Convert** - Automatic conversion to float32 [0.0-1.0] for GPU processing
+3. **Process** - Apply convolution using CPU or GPU implementations
+4. **Save** - Output results in PNG format with automatic scaling
+5. **Compare** - Built-in CPU/GPU result validation with PSNR metrics
+
+### Command Line Options
+
+#### Basic Usage
+```bash
+# Synthetic benchmark mode (original functionality)
+./conv_benchmark [options]
+
+# Real image processing mode  
+./conv_benchmark --input <image> --kernel-file <kernel> [options]
+```
+
+#### Core Options
+- `--input <file>` - Input image file (PNG/JPG/BMP)
+- `--kernel-file <file>` - Convolution kernel file (.txt format)
+- `--output <dir>` - Output directory (default: ./output)
+- `--verbose` - Detailed performance metrics and debugging info
+
+#### Processing Control
+- `--cpu-only` - Run only CPU implementation
+- `--gpu-only` - Run only GPU implementation  
+- `--width <int>` - Image width for synthetic mode (default: 1024)
+- `--height <int>` - Image height for synthetic mode (default: 1024)
+- `--kernel <int>` - Kernel size for synthetic mode (default: 5)
+
+#### Examples
+
+**Edge Detection on Real Images:**
+```bash
+# Horizontal edge detection
+./conv_benchmark --input data/input/test_image.png \
+                 --kernel-file data/kernels/sobel_x_3x3.txt \
+                 --output ./edge_results --verbose
+
+# Vertical edge detection  
+./conv_benchmark --input data/input/gradient.png \
+                 --kernel-file data/kernels/sobel_y_3x3.txt \
+                 --output ./edge_results --verbose
+
+# GPU-only processing for performance testing
+./conv_benchmark --input data/input/test_image.png \
+                 --kernel-file data/kernels/sobel_x_3x3.txt \
+                 --gpu-only --verbose
+```
+
+**Synthetic Benchmarks (Original Mode):**
+```bash
+# Large synthetic benchmark
+./conv_benchmark --width 2048 --height 2048 --kernel 7 --verbose
+
+# CPU baseline measurement
+./conv_benchmark --width 1024 --height 1024 --kernel 5 --cpu-only --verbose
+```
+
+### Output Files
+
+When processing real images, the program generates:
+- `cpu_result.png` - CPU convolution result (if CPU processing enabled)
+- `gpu_result.png` - GPU convolution result (if GPU processing enabled)
+- Console output with performance metrics, speedup analysis, and correctness validation
+
+### Sample Kernels
+
+**Sobel X (Horizontal Edges):**
+```
+-1 0 1
+-2 0 2  
+-1 0 1
+```
+
+**Sobel Y (Vertical Edges):**
+```
+-1 -2 -1
+ 0  0  0
+ 1  2  1
+```
+
+**Custom Kernel Format:**
+Create `.txt` files with space or newline-separated float values in row-major order:
+```
+0.1 0.2 0.1
+0.2 0.4 0.2
+0.1 0.2 0.1
 ```
 
 ## 📁 Project Structure
@@ -106,15 +223,23 @@ cuda-convolution-lab/
 │   ├── memory_analysis.md             # Memory optimization recommendations
 │   └── *.nsys-rep                     # Nsight Systems timeline data
 ├── data/
-│   ├── input/                         # Test images (add your own PNGs)
-│   ├── kernels/                       # Convolution filter definitions
+│   ├── input/                         # 🖼️ Test images for real image processing
+│   │   ├── test_image.png             # ✅ Synthetic test pattern (checkerboard)
+│   │   ├── gradient.png               # ✅ Gradient test image
+│   │   └── README.md                  # Image format and usage guidelines
+│   ├── kernels/                       # 🔧 Convolution filter definitions  
+│   │   ├── identity_3x3.txt           # ✅ Identity filter (no change)
+│   │   ├── gaussian_5x5.txt           # ✅ Gaussian blur kernel
+│   │   ├── sobel_x_3x3.txt            # ✅ Sobel X (horizontal edges)
+│   │   ├── sobel_y_3x3.txt            # ✅ Sobel Y (vertical edges)  
+│   │   └── README.md                  # Kernel format specifications
 │   └── reference/                     # Expected output images
 ├── src/
 │   ├── common/                        # ✅ Shared utilities and headers
 │   │   ├── cuda_helpers.h             # CUDA error checking macros
 │   │   ├── timer.h                    # Performance timing utilities
-│   │   ├── image_io.h                 # Image loading/saving functions
-│   │   └── utils.h                    # General utility functions
+│   │   ├── image_io.h                 # ✅ OpenCV-based image I/O and processing
+│   │   └── utils.h                    # ✅ Kernel loading and utility functions
 │   ├── cpu/                           # ✅ CPU reference implementations
 │   │   └── conv_cpu.cpp               # Sequential/OpenMP/Optimized versions
 │   ├── gpu/                           # GPU kernel implementations
@@ -124,7 +249,7 @@ cuda-convolution-lab/
 │   │   ├── conv_constant.cu           # ⏳ Constant memory optimization
 │   │   ├── conv_texture.cu            # ⏳ Texture memory optimization
 │   │   └── conv_async.cu              # ⏳ Asynchronous memory operations
-│   └── main.cpp                       # ✅ Driver program and benchmarking
+│   └── main.cpp                       # ✅ Enhanced driver with real image processing
 ├── tests/
 │   ├── unit_tests.cpp                 # Correctness verification
 │   └── performance_tests.sh           # Automated benchmarking
@@ -143,6 +268,9 @@ cuda-convolution-lab/
 ## 🎯 Implementation Milestones
 
 ### Phase 1: Foundation (Weeks 1-2)
+- [x] **OpenCV Integration**: Real image I/O with format conversion
+- [x] **Image Processing Mode**: Edge detection with Sobel kernels  
+- [x] **Enhanced CLI**: Support for real images and kernel files
 - [ ] **CPU Baseline**: Reference implementation with timing
 - [ ] **Naive GPU**: Basic kernel, one thread per pixel
 - [ ] **Coalesced Access**: Memory access pattern optimization
@@ -188,7 +316,14 @@ ncu --metrics sm__warps_active.avg.pct_of_peak ./conv_benchmark
 | Shared Memory | 10-20x  | ~70%              | ~60%        |
 | Advanced      | 25-40x  | ~85%              | ~80%        |
 
-## 📊 **Current Profiling Results** (Updated June 16, 2025)
+## 📊 **Current Status** (Updated June 17, 2025)
+
+### ✅ **New Features Completed**
+- **Real Image Processing**: OpenCV integration for PNG/JPG/BMP images
+- **Edge Detection**: Sobel X and Y kernels for computer vision applications  
+- **Enhanced CLI**: Support for `--input` and `--kernel-file` parameters
+- **Result Validation**: CPU/GPU comparison with PSNR metrics
+- **Test Images**: Generated synthetic test patterns for validation
 
 ### System Configuration
 - **GPU**: NVIDIA GeForce RTX 4090 (Compute Capability 8.9)

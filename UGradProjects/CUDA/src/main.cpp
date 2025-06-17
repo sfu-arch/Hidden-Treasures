@@ -57,122 +57,202 @@ void printUsage(const char* program_name) {
     std::cout << "  " << program_name << " --cpu-only --verbose" << std::endl;
 }
 
-void runCPUBenchmarks(const std::vector<float>& input, std::vector<float>& output,
-                     int width, int height, const std::vector<float>& kernel,
-                     int kernel_size, bool verbose) {
+void runImageProcessingBenchmark(const std::string& input_file, const std::string& output_dir,
+                                 const std::string& kernel_file, bool cpu_only, bool gpu_only, bool verbose) {
     
-    std::cout << "\n=== CPU Benchmarks ===" << std::endl;
+    std::cout << "\n=== Image Processing Benchmark ===" << std::endl;
+    std::cout << "Input image: " << input_file << std::endl;
+    std::cout << "Kernel file: " << kernel_file << std::endl;
+    std::cout << "Output directory: " << output_dir << std::endl;
+    
+    // Create output directory
+    createDirectory(output_dir);
+    
+    // Load input image
+    ImageData input_image = load_image(input_file, true); // Force grayscale
+    if (!input_image.is_valid()) {
+        std::cerr << "❌ Error: Failed to load input image" << std::endl;
+        return;
+    }
+    
+    // Load convolution kernel
+    auto kernel_data = load_kernel(kernel_file);
+    if (kernel_data.empty()) {
+        std::cerr << "❌ Error: Failed to load kernel from " << kernel_file << std::endl;
+        return;
+    }
+    
+    int kernel_size = static_cast<int>(std::sqrt(kernel_data.size()));
     
     if (verbose) {
-        std::cout << "Running CPU convolution implementations..." << std::endl;
+        std::cout << "Image dimensions: " << input_image.width << "x" << input_image.height << std::endl;
+        std::cout << "Kernel size: " << kernel_size << "x" << kernel_size << std::endl;
+        std::cout << "Processing mode: ";
+        if (cpu_only) std::cout << "CPU only";
+        else if (gpu_only) std::cout << "GPU only";
+        else std::cout << "CPU + GPU comparison";
+        std::cout << std::endl;
+    }
+    
+    // Prepare output image
+    ImageData output_image(input_image.width, input_image.height, 1);
+    
+    // Run CPU implementation for reference
+    std::vector<float> cpu_result;
+    double cpu_time = 0.0;
+    
+    if (!gpu_only) {
+        std::cout << "\n--- CPU Processing ---" << std::endl;
+        cpu_result.resize(input_image.width * input_image.height);
+        
+        Timer timer;
+        timer.start();
+        cpu::convolution2D(input_image.raw_data(), cpu_result.data(),
+                          input_image.width, input_image.height,
+                          kernel_data.data(), kernel_size,
+                          cpu::ConvolutionMode::OPTIMIZED);
+        timer.stop();
+        cpu_time = timer.last_measurement();
+        
+        std::cout << "CPU convolution took: " << cpu_time << " ms" << std::endl;
+        
+        if (verbose) {
+            cpu::printPerformanceMetrics(input_image.width, input_image.height, 
+                                       kernel_size, cpu_time);
+        }
+        
+        // Save CPU result
+        ImageData cpu_output(input_image.width, input_image.height, 1);
+        cpu_output.data = cpu_result;
+        save_image(cpu_output, output_dir + "/cpu_result.png");
+    }
+    
+    // Run GPU implementation
+    if (!cpu_only) {
+        std::cout << "\n--- GPU Processing ---" << std::endl;
+        
+        Timer timer;
+        timer.start();
+        gpu::convolution2D_naive(input_image.raw_data(), output_image.raw_data(),
+                                 input_image.width, input_image.height,
+                                 kernel_data.data(), kernel_size);
+        timer.stop();
+        double gpu_time = timer.last_measurement();
+        
+        std::cout << "GPU convolution took: " << gpu_time << " ms" << std::endl;
+        
+        if (verbose) {
+            gpu::printGPUPerformanceMetrics(input_image.width, input_image.height,
+                                           kernel_size, gpu_time, "GPU Naive");
+        }
+        
+        // Save GPU result
+        save_image(output_image, output_dir + "/gpu_result.png");
+        
+        // Compare with CPU if both were run
+        if (!gpu_only && !cpu_result.empty()) {
+            bool correct = compare_arrays(cpu_result.data(), output_image.raw_data(),
+                                        input_image.width, input_image.height, 1e-3f);
+            
+            std::cout << "\nGPU result: " << (correct ? "CORRECT" : "INCORRECT") << std::endl;
+            
+            if (cpu_time > 0.0) {
+                double speedup = cpu_time / gpu_time;
+                std::cout << "GPU speedup: " << std::fixed << std::setprecision(2) 
+                         << speedup << "x" << std::endl;
+            }
+        }
+    }
+    
+    std::cout << "\n✅ Image processing completed!" << std::endl;
+    std::cout << "Results saved to: " << output_dir << std::endl;
+}
+
+void runSyntheticBenchmark(int width, int height, int kernel_size, 
+                          const std::string& output_dir, bool cpu_only, bool gpu_only, bool verbose) {
+    
+    std::cout << "\n=== Synthetic Data Benchmark ===" << std::endl;
+    
+    if (verbose) {
+        std::cout << "Creating synthetic test data..." << std::endl;
         std::cout << "Image size: " << width << "x" << height << std::endl;
         std::cout << "Kernel size: " << kernel_size << "x" << kernel_size << std::endl;
     }
     
-    // Sequential implementation
-    {
-        Timer timer;
-        timer.start();
-        cpu::convolution2D(input.data(), output.data(), width, height, 
-                          kernel.data(), kernel_size, cpu::ConvolutionMode::SEQUENTIAL);
-        timer.stop();
-        
-        if (verbose) {
-            cpu::printPerformanceMetrics(width, height, kernel_size, timer.last_measurement());
-        }
+    // Create synthetic input data
+    std::vector<float> input(width * height);
+    std::vector<float> output(width * height);
+    
+    // Initialize with a test pattern
+    for (int i = 0; i < width * height; ++i) {
+        input[i] = static_cast<float>(rand()) / RAND_MAX;
     }
     
-    // OpenMP implementation
-    {
-        std::vector<float> output_omp(width * height);
-        Timer timer;
-        timer.start();
-        cpu::convolution2D(input.data(), output_omp.data(), width, height,
-                          kernel.data(), kernel_size, cpu::ConvolutionMode::OPENMP);
-        timer.stop();
-        
-        if (verbose) {
-            cpu::printPerformanceMetrics(width, height, kernel_size, timer.last_measurement());
-        }
+    // Create a simple kernel (like Gaussian blur)
+    std::vector<float> kernel(kernel_size * kernel_size);
+    float sum = 0.0f;
+    for (int i = 0; i < kernel_size * kernel_size; ++i) {
+        kernel[i] = 1.0f;
+        sum += kernel[i];
+    }
+    // Normalize kernel
+    for (int i = 0; i < kernel_size * kernel_size; ++i) {
+        kernel[i] /= sum;
     }
     
-    // Optimized implementation
-    {
-        std::vector<float> output_opt(width * height);
+    // Run CPU implementation
+    double cpu_time = 0.0;
+    std::vector<float> cpu_result;
+    
+    if (!gpu_only) {
+        std::cout << "\n--- CPU Processing ---" << std::endl;
+        cpu_result.resize(width * height);
+        
         Timer timer;
         timer.start();
-        cpu::convolution2D(input.data(), output_opt.data(), width, height,
+        cpu::convolution2D(input.data(), cpu_result.data(), width, height, 
                           kernel.data(), kernel_size, cpu::ConvolutionMode::OPTIMIZED);
         timer.stop();
+        cpu_time = timer.last_measurement();
+        
+        std::cout << "CPU convolution took: " << cpu_time << " ms" << std::endl;
         
         if (verbose) {
-            cpu::printPerformanceMetrics(width, height, kernel_size, timer.last_measurement());
+            cpu::printPerformanceMetrics(width, height, kernel_size, cpu_time);
         }
     }
-}
-
-void runGPUBenchmarks(const std::vector<float>& input, std::vector<float>& output,
-                     int width, int height, const std::vector<float>& kernel,
-                     int kernel_size, bool verbose) {
     
-    std::cout << "\n=== GPU Benchmarks ===" << std::endl;
-    
-    // Check CUDA availability
-    if (!check_cuda_availability()) {
-        std::cerr << "CUDA not available or insufficient capability" << std::endl;
-        return;
-    }
-    
-    if (verbose) {
-        print_cuda_device_info();
-        std::cout << "Running GPU convolution implementations..." << std::endl;
-    }
-    
-    // Naive GPU implementation
-    {
-        std::vector<float> output_gpu(width * height);
+    // Run GPU implementation
+    if (!cpu_only) {
+        std::cout << "\n--- GPU Processing ---" << std::endl;
+        
         Timer timer;
         timer.start();
-        gpu::convolution2D_naive(input.data(), output_gpu.data(), width, height,
-                                kernel.data(), kernel_size);
+        gpu::convolution2D_naive(input.data(), output.data(), width, height,
+                                 kernel.data(), kernel_size);
         timer.stop();
+        double gpu_time = timer.last_measurement();
         
-        // Verify correctness against CPU result
-        bool correct = compare_arrays(output.data(), output_gpu.data(), 
-                                    width, height, 1e-4f);
-        std::cout << "GPU Naive result: " << (correct ? "CORRECT" : "INCORRECT") << std::endl;
+        std::cout << "GPU convolution took: " << gpu_time << " ms" << std::endl;
         
         if (verbose) {
-            gpu::analyzeMemoryAccess(width, height, kernel_size);
+            gpu::printGPUPerformanceMetrics(width, height, kernel_size, gpu_time, "GPU Naive");
+        }
+        
+        // Compare with CPU if both were run
+        if (!gpu_only && !cpu_result.empty()) {
+            bool correct = compare_arrays(cpu_result.data(), output.data(),
+                                        width, height, 1e-3f);
+            
+            std::cout << "\nGPU result: " << (correct ? "CORRECT" : "INCORRECT") << std::endl;
+            
+            if (cpu_time > 0.0) {
+                double speedup = cpu_time / gpu_time;
+                std::cout << "GPU speedup: " << std::fixed << std::setprecision(2) 
+                         << speedup << "x" << std::endl;
+            }
         }
     }
-    
-    // TODO: Add other GPU implementations
-    // - Coalesced memory access
-    // - Shared memory tiling
-    // - Constant memory
-    // - Texture memory
-    // - Multiple optimizations combined
-}
-
-void saveResults(const std::vector<float>& input, const std::vector<float>& output,
-                int width, int height, const std::string& output_dir) {
-    
-    std::cout << "\nSaving results to " << output_dir << std::endl;
-    
-    // Save input image (if not from file)
-    std::string input_path = output_dir + "/input.png";
-    // TODO: Implement saveImage wrapper for raw arrays
-    // if (image_io::saveImage(input.data(), width, height, input_path)) {
-    //     std::cout << "Saved input image: " << input_path << std::endl;
-    // }
-    
-    // Save output image
-    std::string output_path = output_dir + "/output.png";
-    // TODO: Implement saveImage wrapper for raw arrays
-    // if (image_io::saveImage(output.data(), width, height, output_path)) {
-    //     std::cout << "Saved output image: " << output_path << std::endl;
-    // }
 }
 
 int main(int argc, char* argv[]) {
@@ -181,6 +261,7 @@ int main(int argc, char* argv[]) {
     int height = 1024;
     int kernel_size = 5;
     std::string input_file = "";
+    std::string kernel_file = "";
     std::string output_dir = "./output";
     std::string test_kernel = "all";
     bool verbose = false;
@@ -207,6 +288,9 @@ int main(int argc, char* argv[]) {
         else if ((arg == "-i" || arg == "--input") && i + 1 < argc) {
             input_file = argv[++i];
         }
+        else if ((arg == "--kernel-file") && i + 1 < argc) {
+            kernel_file = argv[++i];
+        }
         else if ((arg == "-o" || arg == "--output") && i + 1 < argc) {
             output_dir = argv[++i];
         }
@@ -231,89 +315,47 @@ int main(int argc, char* argv[]) {
     
     // Validate parameters
     if (kernel_size % 2 == 0) {
-        std::cerr << "Kernel size must be odd" << std::endl;
+        std::cerr << "❌ Error: Kernel size must be odd" << std::endl;
         return 1;
     }
     
     if (width <= 0 || height <= 0 || kernel_size <= 0) {
-        std::cerr << "Invalid dimensions" << std::endl;
+        std::cerr << "❌ Error: Invalid dimensions" << std::endl;
         return 1;
     }
     
-    std::cout << "CUDA Convolution Lab" << std::endl;
-    std::cout << "===================" << std::endl;
-    std::cout << "Image size: " << width << "x" << height << std::endl;
-    std::cout << "Kernel size: " << kernel_size << "x" << kernel_size << std::endl;
+    std::cout << "\n🚀 CUDA Convolution Lab - Image Processing Benchmark" << std::endl;
+    std::cout << "====================================================" << std::endl;
     
-    // Prepare input data
-    std::vector<float> input(width * height);
-    std::vector<float> output(width * height);
-    
-    if (!input_file.empty()) {
-        std::cout << "Loading input image: " << input_file << std::endl;
-        // TODO: Implement loadImage wrapper for raw arrays
-        std::cerr << "Image loading not yet implemented, using test pattern instead" << std::endl;
-        // Fill with test pattern instead
-        for (int i = 0; i < width * height; ++i) {
-            input[i] = ((i / width + i % width) % 2) ? 1.0f : 0.0f;  // Simple checkerboard
-        }
-    } else {
-        std::cout << "Generating test pattern..." << std::endl;
-        // Simple checkerboard pattern
-        for (int i = 0; i < width * height; ++i) {
-            input[i] = ((i / width + i % width) % 2) ? 1.0f : 0.0f;
-        }
-    }
-    
-    // Prepare convolution kernel
-    std::vector<float> kernel(kernel_size * kernel_size);
-    // Simple Gaussian-like kernel (normalized)
-    float center = kernel_size / 2.0f;
-    float sum = 0.0f;
-    for (int y = 0; y < kernel_size; ++y) {
-        for (int x = 0; x < kernel_size; ++x) {
-            float dx = x - center;
-            float dy = y - center;
-            float value = std::exp(-(dx*dx + dy*dy) / (2.0f * 1.0f * 1.0f));
-            kernel[y * kernel_size + x] = value;
-            sum += value;
-        }
-    }
-    // Normalize
-    for (int i = 0; i < kernel_size * kernel_size; ++i) {
-        kernel[i] /= sum;
-    }
-    
-    if (verbose) {
-        std::cout << "\nKernel (center 3x3):" << std::endl;
-        // Simple kernel printing
-        int print_size = std::min(3, kernel_size);
-        int start = (kernel_size - print_size) / 2;
-        for (int y = start; y < start + print_size; ++y) {
-            for (int x = start; x < start + print_size; ++x) {
-                std::cout << std::setw(8) << std::setprecision(4) << kernel[y * kernel_size + x] << " ";
+    try {
+        // Check if we're processing a real image or using synthetic data
+        if (!input_file.empty()) {
+            // Real image processing mode
+            if (kernel_file.empty()) {
+                // Default to Sobel X edge detection if no kernel specified
+                kernel_file = "data/kernels/sobel_x_3x3.txt";
+                std::cout << "Using default Sobel X edge detection kernel" << std::endl;
             }
-            std::cout << std::endl;
+            
+            runImageProcessingBenchmark(input_file, output_dir, kernel_file, 
+                                       cpu_only, gpu_only, verbose);
+        } else {
+            // Synthetic data benchmark mode
+            std::cout << "Mode: Synthetic data benchmark" << std::endl;
+            std::cout << "Image size: " << width << "x" << height << std::endl;
+            std::cout << "Kernel size: " << kernel_size << "x" << kernel_size << std::endl;
+            
+            runSyntheticBenchmark(width, height, kernel_size, output_dir, 
+                                 cpu_only, gpu_only, verbose);
         }
+        
+        std::cout << "\n✅ Benchmark completed successfully!" << std::endl;
+        std::cout << "Results saved to: " << output_dir << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error: " << e.what() << std::endl;
+        return 1;
     }
-    
-    // Create output directory
-    createDirectory(output_dir);
-    
-    // Run benchmarks
-    if (!gpu_only) {
-        runCPUBenchmarks(input, output, width, height, kernel, kernel_size, verbose);
-    }
-    
-    if (!cpu_only) {
-        runGPUBenchmarks(input, output, width, height, kernel, kernel_size, verbose);
-    }
-    
-    // Save results
-    saveResults(input, output, width, height, output_dir);
-    
-    std::cout << "\nBenchmark completed successfully!" << std::endl;
-    std::cout << "Check " << output_dir << " for output images" << std::endl;
     
     return 0;
 }
