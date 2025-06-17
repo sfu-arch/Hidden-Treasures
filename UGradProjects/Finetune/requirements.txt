@@ -1,0 +1,61 @@
+# CPU Memory Optimization Research Project - Requirements
+
+# Core ML/DL frameworks
+torch>=2.0.0
+transformers>=4.30.0
+accelerate>=0.20.0
+datasets>=2.13.0
+
+# Unsloth for efficient fine-tuning
+unsloth[colab]>=2024.6
+
+# Scientific computing and numerical libraries
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# CPU performance profiling and analysis
+psutil>=5.9.0
+pympler>=0.9
+memory-profiler>=0.60.0
+py-spy>=0.3.14
+
+# Performance benchmarking
+pytest-benchmark>=4.0.0
+timeit
+
+# C++ compilation and integration  
+pybind11>=2.10.0
+cppyy>=3.0.0
+
+# Halide integration (requires separate installation)
+# halide-python  # Install separately with conda
+
+# Development and testing
+pytest>=7.3.0
+black>=23.3.0
+flake8>=6.0.0
+mypy>=1.3.0
+jupyter>=1.0.0
+ipywidgets>=8.0.0
+
+# Visualization and analysis
+plotly>=5.14.0
+tensorboard>=2.13.0
+wandb>=0.15.0
+
+# Linear algebra libraries (Python bindings)
+# Note: System BLAS libraries should be installed separately
+# openblas-dev, intel-mkl, or atlas
+
+# System utilities
+tqdm>=4.65.0
+rich>=13.3.0
+typer>=0.9.0
+pydantic>=2.0.0
+
+# Optional CPU architecture analysis
+# cpuinfo>=9.0.0
+# perfplot>=0.10.0
