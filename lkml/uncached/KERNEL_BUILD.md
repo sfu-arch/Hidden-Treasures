@@ -190,12 +190,77 @@ time make modules -j$(nproc)
 
 ### 7. Install the Kernel
 
-#### Install Modules
+#### Simple Approach: Use LOCALVERSION to Keep Both Kernels
+
+The easiest way to keep your current kernel intact is to give your new kernel a unique version suffix:
+
+```bash
+# Set a custom local version before building
+export LOCALVERSION=-custom-cma
+# Or edit .config directly
+echo "CONFIG_LOCALVERSION=\"-custom-cma\"" >> .config
+make olddefconfig
+
+# Now build and install - this creates a separate kernel
+make -j$(nproc)
+sudo make modules_install
+sudo make install
+
+# Update GRUB to see both kernels
+sudo update-grub
+```
+
+This approach:
+- Installs your new kernel alongside the existing one
+- Creates `/boot/vmlinuz-<version>-custom-cma` (separate from current)
+- Creates `/lib/modules/<version>-custom-cma/` (separate module directory)
+- Both kernels appear in GRUB menu
+- No backup needed - your original kernel stays untouched
+
+#### Alternative: Use Debian Package Method (Even Safer)
+```bash
+# Build as Debian package with custom version
+make -j$(nproc) bindeb-pkg LOCALVERSION=-custom-cma
+
+# Install the packages (keeps existing kernel packages intact)
+cd ..
+sudo dpkg -i linux-image-*custom-cma*.deb linux-headers-*custom-cma*.deb
+
+# Update GRUB
+sudo update-grub
+```
+
+#### Manual Backup Method (If You Prefer)
+If you still want explicit backups:
+
+```bash
+# Get current kernel version
+CURRENT_KVER=$(uname -r)
+
+# Create backup directory
+sudo mkdir -p /tmp/kernel-backup/{boot,modules}
+
+# Backup current kernel files
+sudo cp /boot/vmlinuz-"$CURRENT_KVER" /tmp/kernel-backup/boot/
+sudo cp /boot/initrd.img-"$CURRENT_KVER" /tmp/kernel-backup/boot/
+sudo cp /boot/System.map-"$CURRENT_KVER" /tmp/kernel-backup/boot/
+sudo cp /boot/config-"$CURRENT_KVER" /tmp/kernel-backup/boot/
+
+# Backup current modules
+sudo cp -a /lib/modules/"$CURRENT_KVER" /tmp/kernel-backup/modules/
+
+# List what was backed up
+echo "Backed up kernel version: $CURRENT_KVER"
+ls -la /tmp/kernel-backup/boot/
+ls -la /tmp/kernel-backup/modules/
+```
+
+#### Install Modules (if not using Debian packages)
 ```bash
 sudo make modules_install
 ```
 
-#### Install Kernel
+#### Install Kernel (if not using Debian packages)
 ```bash
 sudo make install
 ```
@@ -207,16 +272,6 @@ sudo update-initramfs -c -k $(make kernelrelease)
 
 # Update GRUB bootloader
 sudo update-grub
-```
-
-#### Option C: Install via Debian Packages
-```bash
-# Build Debian packages for the Ubuntu kernel
-dpkg-buildpackage -uc -us -b -j$(nproc)
-# Return to parent directory containing .deb files
-cd ..
-# Install the generated image and headers packages
-sudo dpkg -i linux-image-*_*.deb linux-headers-*_*.deb
 ```
 
 ### 8. Configure Boot Parameters
@@ -240,13 +295,19 @@ Update GRUB:
 sudo update-grub
 ```
 
-### 9. Reboot and Test
+### 9. Boot into New Kernel
 
 ```bash
 sudo reboot
 ```
 
-After reboot:
+**During boot:**
+1. **Access GRUB menu** - Hold SHIFT during boot or press ESC/F12
+2. **Select Advanced options** for Ubuntu
+3. **Choose your new kernel** from the list (should be at the top)
+4. **Boot normally**
+
+After successful boot with new kernel:
 
 1. **Select your new kernel** from GRUB menu (if not default)
 
@@ -273,52 +334,76 @@ sudo chmod 666 /dev/cma_cache /sys/kernel/cma_cache/command
 ./cma_test basic
 ```
 
-## Troubleshooting
+## Recovery and Rollback
 
-### Build Errors
+### If New Kernel Fails to Boot
 
-**Missing dependencies:**
+1. **Boot into previous kernel:**
+   - Restart and select the previous kernel from GRUB menu
+   - Your old kernel should still be available in "Advanced options"
+
+2. **Restore from backup if needed:**
+   ```bash
+   # Restore kernel files
+   CURRENT_KVER=$(uname -r)
+   sudo cp /tmp/kernel-backup/boot/* /boot/
+   
+   # Restore modules
+   sudo rm -rf /lib/modules/"$CURRENT_KVER"
+   sudo cp -a /tmp/kernel-backup/modules/"$CURRENT_KVER" /lib/modules/
+   
+   # Update initramfs and GRUB
+   sudo update-initramfs -u -k "$CURRENT_KVER"
+   sudo update-grub
+   ```
+
+3. **Remove problematic kernel:**
+   ```bash
+   # List installed kernels
+   dpkg -l | grep linux-image
+   
+   # Remove problematic kernel (replace with actual version)
+   sudo apt remove linux-image-<version>
+   sudo update-grub
+   ```
+
+### If New Kernel Boots but Modules Don't Work
+
+1. **Check module loading:**
+   ```bash
+   # Check if modules are loading
+   lsmod
+   
+   # Check for module errors
+   dmesg | grep -i error
+   dmesg | grep -i module
+   ```
+
+2. **Rebuild and reinstall modules:**
+   ```bash
+   cd ~/kernel-build/linux-*
+   make modules_install
+   sudo depmod -a
+   ```
+
+3. **Restore module backup if needed:**
+   ```bash
+   CURRENT_KVER=$(uname -r)
+   sudo rm -rf /lib/modules/"$CURRENT_KVER"
+   sudo cp -a /tmp/kernel-backup/modules/"$CURRENT_KVER" /lib/modules/
+   sudo depmod -a
+   ```
+
+### Clean Up After Successful Installation
+
+Once you're confident the new kernel works properly:
+
 ```bash
-# Install additional packages if needed
-sudo apt install -y dwarves zstd
-```
+# Remove backup
+sudo rm -rf /tmp/kernel-backup
 
-**Out of space:**
-```bash
-# Clean build artifacts
-make clean
-make mrproper
-
-# Free up more space
-sudo apt clean
-sudo journalctl --vacuum-time=3d
-```
-
-### Boot Issues
-
-**Kernel panic or boot failure:**
-1. Boot into recovery mode
-2. Select previous working kernel from GRUB
-3. Check kernel logs: `dmesg | grep -i error`
-
-**GRUB not showing new kernel:**
-```bash
-sudo update-grub
-sudo grub-install /dev/sda  # Adjust device as needed
-```
-
-### CMA Not Working
-
-**Check configuration:**
-```bash
-# Verify CMA is compiled in
-zcat /proc/config.gz | grep CMA
-
-# Check boot parameters
-cat /proc/cmdline
-
-# Check CMA allocation
-dmesg | grep -i cma
+# Remove old kernel packages (optional)
+sudo apt autoremove
 ```
 
 ## Expected Results
