@@ -22,6 +22,7 @@ uncached/
 ├── README.md              # This documentation file
 ├── DESIGN.md             # Detailed design explanation and API reference
 ├── TROUBLESHOOTING.md    # CMA allocation troubleshooting guide
+├── KERNEL_BUILD.md       # Complete guide to building kernel with CMA support
 ├── uncached_mem.c        # Static cache control module with sysfs interface
 ├── dynamic_cache.c       # Dynamic per-page cache control module
 ├── cma_cache.c           # DMA/CMA-based large contiguous allocation module
@@ -206,6 +207,26 @@ make timing_test
 ## Usage
 
 ### 🚀 Quick Start for CMA Module (Most Common Use Case)
+
+**⚠️ Prerequisites: Ensure CMA is enabled in your kernel**
+
+If you get CMA allocation failures, you may need to enable/increase CMA memory:
+
+```bash
+# 1. Check if CMA is available
+cat /proc/meminfo | grep -i cma
+# Should show CmaTotal and CmaFree
+
+# 2. If no CMA found, add kernel boot parameter:
+sudo nano /etc/default/grub
+# Add to GRUB_CMDLINE_LINUX_DEFAULT: "cma=128M"
+# Example: GRUB_CMDLINE_LINUX_DEFAULT="quiet splash cma=128M"
+sudo update-grub && sudo reboot
+
+# 3. For detailed CMA setup, see CMA_KERNEL_SETUP.md
+```
+
+**Standard workflow:**
 
 ```bash
 # 1. Build everything
@@ -1561,6 +1582,52 @@ sudo rmmod dynamic_cache
 5. **Memory Mapping**: Test mmap with correct offsets
 6. **Performance**: Measure cached vs uncached access times
 7. **Cleanup**: Verify proper resource cleanup on unload
+
+## Kernel Configuration for CMA Support
+
+If you're experiencing CMA allocation failures, your kernel might not have CMA support enabled. Here are your options:
+
+### Option 1: Quick Check - Install Different Kernel
+```bash
+# Check if CMA is enabled in current kernel
+zcat /proc/config.gz 2>/dev/null | grep CONFIG_CMA || echo "CMA not enabled"
+
+# Try installing a kernel with CMA support
+sudo apt install linux-image-generic-hwe-20.04
+sudo reboot
+```
+
+### Option 2: Build Custom Kernel (Complete Control)
+For full CMA support and customization, see **[KERNEL_BUILD.md](KERNEL_BUILD.md)** for detailed instructions on:
+- Building Linux kernel from source with CMA enabled
+- Configuring optimal CMA settings for your hardware
+- Setting up boot parameters for maximum CMA memory allocation
+
+**Quick summary of kernel build process:**
+```bash
+# Install dependencies
+sudo apt install build-essential libncurses-dev bison flex libssl-dev libelf-dev
+
+# Download kernel source
+wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.1.55.tar.xz
+tar -xf linux-6.1.55.tar.xz && cd linux-6.1.55
+
+# Configure with CMA enabled
+cp /boot/config-$(uname -r) .config
+make menuconfig  # Enable CMA options
+make -j$(nproc) && sudo make modules_install install
+
+# Add boot parameters
+echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash cma=128M"' | sudo tee -a /etc/default/grub
+sudo update-grub && sudo reboot
+```
+
+Expected results with CMA enabled:
+```bash
+$ cat /proc/meminfo | grep -i cma
+CmaTotal:     131072 kB
+CmaFree:      130048 kB
+```
 
 ## Setting Up Both Modules for Non-Root Testing
 

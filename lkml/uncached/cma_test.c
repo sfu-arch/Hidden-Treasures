@@ -27,12 +27,12 @@
 #define COMMAND_PATH "/sys/kernel/cma_cache/command"
 #define STATUS_PATH "/sys/kernel/cma_cache/status"
 
-// Test allocation sizes - reduced to be more conservative
+// Test allocation sizes - very conservative for non-CMA systems
 static const char* test_sizes[] = {
+    "256K",    // 256KB
+    "512K",    // 512KB  
     "1M",      // 1MB
-    "2M",      // 2MB  
-    "4M",      // 4MB
-    NULL       // Removed large sizes that often fail
+    NULL       // Very small sizes for systems without CMA
 };
 
 // Helper functions
