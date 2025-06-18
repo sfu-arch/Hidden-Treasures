@@ -21,7 +21,7 @@ all:
 # Clean target
 clean:
 	$(MAKE) -C $(KERNEL_BUILD) M=$(PWD) clean
-	rm -f timing_test dynamic_test dynamic_size_test cma_test
+	rm -f timing_test dynamic_test dynamic_size_test cma_test cma_debug
 
 # Install module (requires root privileges)
 install:
@@ -67,6 +67,10 @@ dynamic_size_test: dynamic_size_test.c
 # Build CMA cache test program
 cma_test: cma_test.c
 	gcc -o cma_test cma_test.c -lrt
+
+# Build CMA debug tool  
+cma_debug: cma_debug.c
+	gcc -o cma_debug cma_debug.c
 
 # Run tests (requires module to be loaded)
 test: timing_test

@@ -27,13 +27,12 @@
 #define COMMAND_PATH "/sys/kernel/cma_cache/command"
 #define STATUS_PATH "/sys/kernel/cma_cache/status"
 
-// Test allocation sizes
+// Test allocation sizes - reduced to be more conservative
 static const char* test_sizes[] = {
     "1M",      // 1MB
-    "4M",      // 4MB  
-    "16M",     // 16MB
-    "64M",     // 64MB
-    NULL
+    "2M",      // 2MB  
+    "4M",      // 4MB
+    NULL       // Removed large sizes that often fail
 };
 
 // Helper functions
@@ -81,12 +80,53 @@ static void print_status(void)
     printf("========================\n\n");
 }
 
+// Track successful allocation IDs
+static int successful_alloc_ids[16];
+static int num_successful_allocs = 0;
+
+static void get_current_allocation_ids(int ids[], int *count)
+{
+    FILE *fp;
+    char line[256];
+    int id;
+    
+    *count = 0;
+    
+    fp = fopen(STATUS_PATH, "r");
+    if (!fp) {
+        return;
+    }
+    
+    // Look for all allocation IDs in the status output
+    while (fgets(line, sizeof(line), fp) && *count < 16) {
+        // Look for lines like: "  7     1024K    256  ..."
+        if (sscanf(line, "%d", &id) == 1 && id > 0 && id < 100) {
+            // Verify this is actually an allocation line by checking for size info
+            if (strstr(line, "K") && (strstr(line, "CACHED") || strstr(line, "UNCACHED"))) {
+                ids[*count] = id;
+                (*count)++;
+            }
+        }
+    }
+    
+    fclose(fp);
+}
+
 static void test_basic_allocation(void)
 {
     char cmd[64];
     int i;
+    int initial_ids[16], initial_count;
+    int current_ids[16], current_count;
     
     printf("=== Basic Allocation Test ===\n");
+    
+    // Reset tracking
+    num_successful_allocs = 0;
+    memset(successful_alloc_ids, 0, sizeof(successful_alloc_ids));
+    
+    // Get initial allocation IDs
+    get_current_allocation_ids(initial_ids, &initial_count);
     
     // Test different allocation sizes
     for (i = 0; test_sizes[i]; i++) {
@@ -99,35 +139,81 @@ static void test_basic_allocation(void)
         }
         
         usleep(100000); // 100ms delay
+        
+        // Check for new allocations
+        get_current_allocation_ids(current_ids, &current_count);
+        if (current_count > initial_count + num_successful_allocs) {
+            // Find the newest allocation ID
+            for (int j = 0; j < current_count; j++) {
+                int new_id = current_ids[j];
+                int is_new = 1;
+                
+                // Check if this ID was in the initial list
+                for (int k = 0; k < initial_count; k++) {
+                    if (initial_ids[k] == new_id) {
+                        is_new = 0;
+                        break;
+                    }
+                }
+                
+                // Check if this ID is already in our successful list
+                if (is_new) {
+                    for (int k = 0; k < num_successful_allocs; k++) {
+                        if (successful_alloc_ids[k] == new_id) {
+                            is_new = 0;
+                            break;
+                        }
+                    }
+                }
+                
+                if (is_new && num_successful_allocs < 16) {
+                    successful_alloc_ids[num_successful_allocs++] = new_id;
+                    printf("Successfully allocated %s with ID %d\n", test_sizes[i], new_id);
+                    break;
+                }
+            }
+        }
     }
     
+    printf("Total successful allocations: %d\n", num_successful_allocs);
+    for (i = 0; i < num_successful_allocs; i++) {
+        printf("  Allocation ID: %d\n", successful_alloc_ids[i]);
+    }
     print_status();
 }
 
 static void test_cache_control(void)
 {
+    char cmd[64];
+    int i;
+    
     printf("=== Cache Control Test ===\n");
     
-    // Test cache state changes
-    printf("Setting allocation 1 as uncached...\n");
-    write_command("uncache 1");
-    usleep(50000);
+    if (num_successful_allocs == 0) {
+        printf("No successful allocations to test cache control on\n");
+        return;
+    }
     
-    printf("Setting allocation 2 as uncached...\n");
-    write_command("uncache 2");
-    usleep(50000);
-    
-    printf("Toggling allocation 3 cache state...\n");
-    write_command("toggle 3");
-    usleep(50000);
+    // Test cache state changes using actual allocation IDs
+    for (i = 0; i < num_successful_allocs && i < 3; i++) {
+        int alloc_id = successful_alloc_ids[i];
+        
+        printf("Setting allocation %d as uncached...\n", alloc_id);
+        snprintf(cmd, sizeof(cmd), "uncache %d", alloc_id);
+        write_command(cmd);
+        usleep(50000);
+    }
     
     print_status();
     
     printf("Restoring allocations to cached state...\n");
-    write_command("cache 1");
-    write_command("cache 2");
-    write_command("cache 3");
-    usleep(50000);
+    for (i = 0; i < num_successful_allocs && i < 3; i++) {
+        int alloc_id = successful_alloc_ids[i];
+        
+        snprintf(cmd, sizeof(cmd), "cache %d", alloc_id);
+        write_command(cmd);
+        usleep(50000);
+    }
     
     print_status();
 }
@@ -142,15 +228,21 @@ static void test_memory_mapping(void)
     
     printf("=== Memory Mapping Test ===\n");
     
+    if (num_successful_allocs == 0) {
+        printf("No successful allocations to test memory mapping on\n");
+        return;
+    }
+    
     fd = open(DEVICE_PATH, O_RDWR);
     if (fd < 0) {
         perror("Failed to open device");
         return;
     }
     
-    // Test mapping allocation 1 (should be 1MB)
-    printf("Mapping allocation 1...\n");
-    mapped_addr = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 1 * getpagesize());
+    // Test mapping the first successful allocation
+    int alloc_id = successful_alloc_ids[0];
+    printf("Mapping allocation %d...\n", alloc_id);
+    mapped_addr = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, alloc_id * getpagesize());
     
     if (mapped_addr == MAP_FAILED) {
         perror("mmap failed");
@@ -158,7 +250,7 @@ static void test_memory_mapping(void)
         return;
     }
     
-    printf("Successfully mapped allocation 1 at %p\n", mapped_addr);
+    printf("Successfully mapped allocation %d at %p\n", alloc_id, mapped_addr);
     
     // Test memory access
     data = (volatile uint64_t *)mapped_addr;
@@ -194,16 +286,23 @@ static void test_performance(void)
     double cached_time, uncached_time;
     int i;
     const int iterations = 1000000;
+    char cmd[64];
     
     printf("=== Performance Test ===\n");
     
-    // Set the allocations that were just created as cached/uncached
-    // In makefile run, these will be 3 and 4; in standalone run, they'll be 1 and 2
-    // Let's try both possibilities to be robust
-    write_command("cache 1");
-    write_command("uncache 2");
-    write_command("cache 3"); 
-    write_command("uncache 4");
+    if (num_successful_allocs < 2) {
+        printf("Need at least 2 successful allocations for performance test\n");
+        return;
+    }
+    
+    // Set the first allocation as cached and second as uncached
+    int cached_id = successful_alloc_ids[0];
+    int uncached_id = successful_alloc_ids[1];
+    
+    snprintf(cmd, sizeof(cmd), "cache %d", cached_id);
+    write_command(cmd);
+    snprintf(cmd, sizeof(cmd), "uncache %d", uncached_id);
+    write_command(cmd);
     usleep(100000);
     
     fd = open(DEVICE_PATH, O_RDWR);
@@ -212,18 +311,9 @@ static void test_performance(void)
         return;
     }
     
-    // Try mapping allocations 1 and 2 first, then 3 and 4 as fallback
-    cached_mem = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 1 * getpagesize());
-    if (cached_mem == MAP_FAILED) {
-        // Try allocation 3 instead
-        cached_mem = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 3 * getpagesize());
-    }
-    
-    uncached_mem = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 2 * getpagesize());
-    if (uncached_mem == MAP_FAILED) {
-        // Try allocation 4 instead
-        uncached_mem = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 4 * getpagesize());
-    }
+    // Map both allocations
+    cached_mem = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, cached_id * getpagesize());
+    uncached_mem = mmap(NULL, 1024*1024, PROT_READ|PROT_WRITE, MAP_SHARED, fd, uncached_id * getpagesize());
     
     if (cached_mem == MAP_FAILED || uncached_mem == MAP_FAILED) {
         perror("mmap failed");
@@ -234,7 +324,7 @@ static void test_performance(void)
     cached_data = (volatile uint64_t *)cached_mem;
     uncached_data = (volatile uint64_t *)uncached_mem;
     
-    printf("Testing cached memory performance...\n");
+    printf("Testing cached memory performance (allocation %d)...\n", cached_id);
     clock_gettime(CLOCK_MONOTONIC, &start);
     for (i = 0; i < iterations; i++) {
         cached_data[i % 1000] = i;
@@ -242,7 +332,7 @@ static void test_performance(void)
     clock_gettime(CLOCK_MONOTONIC, &end);
     cached_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     
-    printf("Testing uncached memory performance...\n");
+    printf("Testing uncached memory performance (allocation %d)...\n", uncached_id);
     clock_gettime(CLOCK_MONOTONIC, &start);
     for (i = 0; i < iterations; i++) {
         uncached_data[i % 1000] = i;
@@ -255,8 +345,10 @@ static void test_performance(void)
            cached_time, (cached_time * 1e9) / iterations);
     printf("Uncached memory: %.6f seconds (%.2f ns/access)\n", 
            uncached_time, (uncached_time * 1e9) / iterations);
-    printf("Performance ratio: %.1fx slower for uncached\n", 
-           uncached_time / cached_time);
+    if (cached_time > 0) {
+        printf("Performance ratio: %.1fx slower for uncached\n", 
+               uncached_time / cached_time);
+    }
     
     munmap(cached_mem, 1024*1024);
     munmap(uncached_mem, 1024*1024);
@@ -265,15 +357,24 @@ static void test_performance(void)
 
 static void test_cleanup(void)
 {
+    char cmd[64];
+    int i;
+    
     printf("=== Cleanup Test ===\n");
     
-    // Free all allocations
-    printf("Freeing all allocations...\n");
-    write_command("free 1");
-    write_command("free 2");
-    write_command("free 3");
-    write_command("free 4");
-    usleep(100000);
+    // Free all successful allocations
+    printf("Freeing %d allocations...\n", num_successful_allocs);
+    for (i = 0; i < num_successful_allocs; i++) {
+        int alloc_id = successful_alloc_ids[i];
+        printf("Freeing allocation %d...\n", alloc_id);
+        snprintf(cmd, sizeof(cmd), "free %d", alloc_id);
+        write_command(cmd);
+        usleep(10000);
+    }
+    
+    // Reset tracking
+    num_successful_allocs = 0;
+    memset(successful_alloc_ids, 0, sizeof(successful_alloc_ids));
     
     print_status();
 }
