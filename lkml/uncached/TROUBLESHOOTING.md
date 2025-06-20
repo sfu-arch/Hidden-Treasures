@@ -2,6 +2,8 @@
 
 This guide provides solutions for common issues encountered with the Linux kernel memory management modules.
 
+> **Module Overview**: This project includes three modules with different purposes. See the [Module Comparison Table](README.md#-module-comparison) to understand which module is right for your use case.
+
 ## Table of Contents
 
 1. [Module Loading Issues](#module-loading-issues)

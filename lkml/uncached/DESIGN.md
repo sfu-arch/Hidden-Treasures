@@ -1,5 +1,7 @@
 # Linux Kernel Module Design: Uncached Memory Allocation
 
+> **Quick Reference**: For a comparison of all three modules (uncached_mem, dynamic_cache, cma_cache), see the [Module Comparison Table](README.md#-module-comparison) in README.md.
+
 ## Overview
 
 This document explains the design and implementation of a Linux kernel module that demonstrates cache behavior by providing both cached and uncached memory allocation with variable size support. The module uses modern Linux kernel APIs and provides a sysfs interface for control.
