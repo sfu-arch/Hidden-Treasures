@@ -195,11 +195,26 @@ static int allocate_cma_memory(size_t size)
     num_pages = size / PAGE_SIZE;
     
     // Allocate using DMA coherent allocation (uses CMA backend when available)
+    printk(KERN_INFO "Attempting to allocate %zu bytes (%d pages) from DMA coherent memory\n", 
+           size, num_pages);
     alloc->virt_addr = dma_alloc_coherent(&cma_pdev->dev, size, 
                                          &alloc->dma_handle, GFP_KERNEL);
     
     if (!alloc->virt_addr) {
+        void *test_addr;
+        dma_addr_t test_handle;
+        
         printk(KERN_ERR "Failed to allocate %zu bytes from DMA coherent memory\n", size);
+        printk(KERN_INFO "DMA mask: %llx\n", cma_pdev->dev.coherent_dma_mask);
+        
+        // Test if small allocations work
+        test_addr = dma_alloc_coherent(&cma_pdev->dev, PAGE_SIZE, &test_handle, GFP_KERNEL);
+        if (test_addr) {
+            printk(KERN_INFO "Small DMA allocation (4KB) works, issue may be size-related\n");
+            dma_free_coherent(&cma_pdev->dev, PAGE_SIZE, test_addr, test_handle);
+        } else {
+            printk(KERN_INFO "Even small DMA allocations fail - DMA setup issue\n");
+        }
         return -ENOMEM;
     }
     
@@ -551,11 +566,15 @@ static int __init cma_cache_init(void)
         return ret;
     }
     
-    // Set up DMA mask for the platform device
-    ret = dma_set_mask_and_coherent(&cma_pdev->dev, DMA_BIT_MASK(32));
+    // Set up DMA mask for the platform device (64-bit for modern systems)
+    ret = dma_set_mask_and_coherent(&cma_pdev->dev, DMA_BIT_MASK(64));
     if (ret) {
-        printk(KERN_ERR "Failed to set DMA mask: %d\n", ret);
-        goto err_platform;
+        printk(KERN_WARNING "Failed to set 64-bit DMA mask, trying 32-bit: %d\n", ret);
+        ret = dma_set_mask_and_coherent(&cma_pdev->dev, DMA_BIT_MASK(32));
+        if (ret) {
+            printk(KERN_ERR "Failed to set 32-bit DMA mask: %d\n", ret);
+            goto err_platform;
+        }
     }
     
     // Create character device
