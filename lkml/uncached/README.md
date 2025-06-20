@@ -959,7 +959,6 @@ echo "alloc" > /sys/kernel/dynamic_cache/command
 make dynamic_test
 sudo insmod dynamic_cache.ko
 ./dynamic_test
-sudo rmmod dynamic_cache
 
 # Or use the automated test target
 make dynamic_test_run
@@ -1185,6 +1184,10 @@ The `cma_cache` module demonstrates large contiguous memory allocation using DMA
 # Build all modules
 make all
 
+# Check CMA memory availability first (recommended for large allocations)
+grep -E 'Cma(Total|Free)' /proc/meminfo
+# If CmaTotal < 64MB, consider configuring GRUB (see CMA Configuration section below)
+
 # Load the CMA cache module
 sudo insmod cma_cache.ko
 
@@ -1202,6 +1205,9 @@ cat /sys/kernel/cma_cache/status
 echo "alloc 1M" > /sys/kernel/cma_cache/command     # 1MB block
 echo "alloc 16M" > /sys/kernel/cma_cache/command    # 16MB block
 echo "alloc 64M" > /sys/kernel/cma_cache/command    # 64MB block
+
+# For larger allocations (>50MB), see "CMA Memory Configuration" section below
+# if you encounter "Failed to allocate" errors
 
 # Set cache attributes
 echo "uncache 1" > /sys/kernel/cma_cache/command    # Set allocation 1 as uncached
@@ -1349,7 +1355,7 @@ All three modules provide performance insights for different use cases:
 
 ### Static Cache Control (uncached_mem)
 - **Use case**: Basic cache behavior demonstration
-- **Granularity**: Entire allocation (4KB to 128MB)
+- **Granularity**: Entire allocation (4KB-128MB)
 - **Performance**: One-time setup cost
 - **Interface**: Simple alloc/free commands
 
@@ -1379,303 +1385,48 @@ DMA/CMA Allocation (cma_cache):
 - **Recent improvement**: 33.6x performance difference (6.4 ns cached vs 215.8 ns uncached)
 ```
 
-## Use Cases
+## CMA Quick Start Guide
 
-### Educational
-- **OS Courses**: Understand kernel memory management
-- **System Performance**: Learn cache behavior impact
-- **Kernel Programming**: Modern kernel module development
+### For Large Allocation Testing (>50MB)
 
-### Research
-- **Cache Analysis**: Detailed per-page cache behavior study
-- **Performance Tuning**: Identify cache-sensitive operations  
-- **Algorithm Testing**: Compare performance with different cache states
-
-### Development
-- **Driver Development**: Test memory mapping strategies
-- **Embedded Systems**: Optimize cache usage for specific workloads
-- **Performance Debugging**: Isolate cache-related performance issues
-
-## Build Targets
-
-The Makefile supports both modules:
-
+**1. Check current CMA:**
 ```bash
-make all              # Build both kernel modules
-make timing_test      # Build static cache test program
-make dynamic_test     # Build dynamic cache test program
-make dynamic_size_test # Build variable size allocation test program
-make test             # Test uncached_mem module
-make dynamic_test_run # Test dynamic_cache module  
-make test_all         # Test both modules
-make clean           # Clean all build artifacts
+grep -E 'Cma(Total|Free)' /proc/meminfo
 ```
 
-## Troubleshooting (Updated with Fixes)
-
-### mmap Issues (Fixed in Current Version)
-
-#### Problem: mmap fails with "Invalid argument"
-**Symptoms:**
-- `mmap()` returns `MAP_FAILED` 
-- `errno = 22` (EINVAL)
-- No kernel error messages in dmesg
-
-**Solution (Fixed):**
-```c
-// ❌ WRONG: Don't pass page index directly
-mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, page_id);
-
-// ✅ CORRECT: Pass byte offset
-mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, page_id * 4096);
-```
-
-**Root Cause:** mmap offset parameter must be in bytes, not page units.
-
-#### Problem: Kernel module compilation fails
-**Solution:**
+**2. If CmaTotal < 128MB, configure GRUB:**
 ```bash
-# Install kernel headers
-sudo apt-get install linux-headers-$(uname -r)
-
-# Clean and rebuild
-make clean && make all
-```
-
-#### Problem: Module loading fails
-**Symptoms:**
-- `insmod` fails with "Operation not permitted"
-- "Unknown symbol" errors in dmesg
-
-**Solution:**
-```bash
-# Check kernel version compatibility
-uname -r
-ls /lib/modules/$(uname -r)/build
-
-# Rebuild for current kernel
-make clean && make all
-
-# Load with debugging
-sudo insmod dynamic_cache.ko
-dmesg | tail -10
-```
-
-### Module Loading Issues
-```bash
-# Check kernel logs
-dmesg | tail -20
-
-# Verify kernel headers
-ls /lib/modules/$(uname -r)/build
-
-# Check module dependencies
-modinfo dynamic_cache.ko
-```
-
-### Permission Issues
-```bash
-# Ensure proper permissions for sysfs files
-ls -la /sys/kernel/dynamic_cache/
-
-# Check device file permissions  
-ls -la /dev/dynamic_cache
-
-# Run tests with appropriate privileges
-sudo ./dynamic_test
-```
-
-### Memory Mapping Debugging
-```bash
-# Enable kernel debugging
-echo "file mm/mmap.c +p" > /sys/kernel/debug/dynamic_debug/control  # (if available)
-
-# Check our module's debug output
-dmesg | grep -E "(mmap|dynamic_cache)"
-
-# Verify page allocation
-cat /sys/kernel/dynamic_cache/status
-```
-
-### Performance Issues
-```bash
-# Check system load
-top
-cat /proc/meminfo
-
-# Monitor cache behavior
-perf stat -e cache-misses,cache-references ./your_test_program
-
-# Check for memory fragmentation (if using large allocations)
-cat /proc/buddyinfo
-```
-
-### Architecture Support
-- Cache control requires x86 architecture
-- Some features may not be available on all systems
-- Check dmesg for architecture-specific warnings
-
-## Known Issues and Workarounds
-
-### 1. Device Permissions
-**Issue**: `/dev/dynamic_cache` created with root-only permissions.
-**Workaround**: Run tests with `sudo` or add udev rules.
-```bash
-# Temporary fix
-sudo chmod 666 /dev/dynamic_cache
-
-# Permanent fix: Add udev rule
-echo 'KERNEL=="dynamic_cache", MODE="0666"' | sudo tee /etc/udev/rules.d/99-dynamic-cache.rules
-```
-
-### 2. Memory Fragmentation (Large Allocations)
-**Issue**: vmalloc may fail for very large memory pools.
-**Workaround**: Reduce `MAX_PAGES` in module source if needed.
-
-### 3. Architecture Limitations
-**Issue**: Cache control not available on all architectures.
-**Expected Behavior**: Module loads but cache operations may be no-ops.
-
-## Build Targets (Updated)
-
-The Makefile supports both modules and all tests:
-
-```bash
-make all              # Build both kernel modules
-make timing_test      # Build static cache test program
-make dynamic_test     # Build dynamic cache test program
-make dynamic_size_test # Build variable size allocation test program
-make test             # Test uncached_mem module
-make dynamic_test_run # Test dynamic_cache module (fully automated)
-make test_all         # Test both modules
-make clean           # Clean all build artifacts
-
-# Individual module control
-make load             # Load uncached_mem
-make load_dynamic     # Load dynamic_cache
-make unload           # Unload uncached_mem
-make unload_dynamic   # Unload dynamic_cache
-```
-
-## Testing Strategy
-
-### Automated Testing
-```bash
-# Quick test
-make dynamic_test_run
-
-# Comprehensive test with both modules
-make test_all
-
-# Manual testing with custom parameters
-sudo insmod dynamic_cache.ko
-echo "alloc" > /sys/kernel/dynamic_cache/command
-# ... custom tests ...
-sudo rmmod dynamic_cache
-```
-
-### Manual Verification Steps
-1. **Module Loading**: Check `lsmod` and `dmesg`
-2. **Interface Creation**: Verify sysfs and device files exist
-3. **Page Allocation**: Test `alloc` command and check status
-4. **Cache Control**: Test `cache`/`uncache` commands
-5. **Memory Mapping**: Test mmap with correct offsets
-6. **Performance**: Measure cached vs uncached access times
-7. **Cleanup**: Verify proper resource cleanup on unload
-
-## Kernel Configuration for CMA Support
-
-If you're experiencing CMA allocation failures, your kernel might not have CMA support enabled. Here are your options:
-
-### Option 1: Quick Check - Install Different Kernel
-```bash
-# Check if CMA is enabled in current kernel
-zcat /proc/config.gz 2>/dev/null | grep CONFIG_CMA || echo "CMA not enabled"
-
-# Try installing a kernel with CMA support
-sudo apt install linux-image-generic-hwe-20.04
-sudo reboot
-```
-
-### Option 2: Build Custom Kernel (Complete Control)
-For full CMA support and customization, see **[KERNEL_BUILD.md](KERNEL_BUILD.md)** for detailed instructions on:
-- Building Linux kernel from source with CMA enabled
-- Configuring optimal CMA settings for your hardware
-- Setting up boot parameters for maximum CMA memory allocation
-
-**Quick summary of kernel build process:**
-```bash
-# Install dependencies
-sudo apt install build-essential libncurses-dev bison flex libssl-dev libelf-dev
-
-# Download kernel source
-wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.1.55.tar.xz
-tar -xf linux-6.1.55.tar.xz && cd linux-6.1.55
-
-# Configure with CMA enabled
-cp /boot/config-$(uname -r) .config
-make menuconfig  # Enable CMA options
-make -j$(nproc) && sudo make modules_install install
-
-# Add boot parameters
-echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash cma=128M"' | sudo tee -a /etc/default/grub
+sudo nano /etc/default/grub
+# Add: GRUB_CMDLINE_LINUX="... cma=256M movable_node"
 sudo update-grub && sudo reboot
 ```
 
-Expected results with CMA enabled:
+**3. Test large allocations:**
 ```bash
-$ cat /proc/meminfo | grep -i cma
-CmaTotal:     131072 kB
-CmaFree:      130048 kB
+make all && sudo insmod cma_cache.ko
+sudo chmod 666 /dev/cma_cache /sys/kernel/cma_cache/command
+echo "alloc 128M" > /sys/kernel/cma_cache/command
+cat /sys/kernel/cma_cache/status
 ```
 
-## Setting Up Both Modules for Non-Root Testing
+### NUMA Targeting (Multi-node systems)
 
-To run tests for both modules without requiring sudo for each command, set up permissions once after loading the modules:
-
-### Complete Setup Script
+**1. Check NUMA topology:**
 ```bash
-# Build both modules
-make all
-
-# Load both modules
-sudo insmod uncached_mem.ko
-sudo insmod dynamic_cache.ko
-
-# Set permissions for uncached_mem module
-sudo chmod 666 /dev/uncached_mem
-sudo chmod 666 /sys/kernel/uncached_mem/command
-
-# Set permissions for dynamic_cache module  
-sudo chmod 666 /dev/dynamic_cache
-sudo chmod 666 /sys/kernel/dynamic_cache/command
-
-# Now you can run all tests without sudo
-echo "0 4K" > /sys/kernel/uncached_mem/command
-./timing_test
-echo "alloc" > /sys/kernel/dynamic_cache/command
-./dynamic_test
-
-# Cleanup (requires sudo)
-sudo rmmod uncached_mem dynamic_cache
+ls /sys/devices/system/node/  # Shows available nodes
 ```
 
-### One-Line Permission Setup
+**2. Configure NUMA-specific CMA:**
 ```bash
-# After loading modules, set all permissions at once:
-sudo chmod 666 /dev/uncached_mem /sys/kernel/uncached_mem/command /dev/dynamic_cache /sys/kernel/dynamic_cache/command
+# In GRUB: cma=256M@node0,256M@node1
+# Or at runtime: echo "numa 1" > /sys/kernel/cma_cache/command
 ```
 
-## License
+### Common Issues & Solutions
 
-GPL v2 - See individual source files for details.
-
-## Educational Value
-
-This project demonstrates:
-- **Modern kernel module development** with sysfs interfaces
-- **Advanced memory management** techniques and trade-offs
-- **CPU cache behavior** and performance implications  
-- **Architecture-specific programming** with portable APIs
-- **Comprehensive testing** and debugging practices
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "Failed to allocate X bytes" | CMA pool too small | Increase `cma=` in GRUB |
+| Allocation on wrong NUMA node | No NUMA targeting | Use `cma=SIZE@nodeN` |
+| Memory fragmentation | High system load | Add `movable_node` parameter |
 
