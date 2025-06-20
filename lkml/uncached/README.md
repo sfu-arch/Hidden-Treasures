@@ -1398,6 +1398,7 @@ grep -E 'Cma(Total|Free)' /proc/meminfo
 ```bash
 sudo nano /etc/default/grub
 # Add: GRUB_CMDLINE_LINUX="... cma=256M movable_node"
+# Add: GRUB_CMDLINE_LINUX_DEFAULT="... cma=256M@node0 for NUMA
 sudo update-grub && sudo reboot
 ```
 
@@ -1419,7 +1420,6 @@ ls /sys/devices/system/node/  # Shows available nodes
 **2. Configure NUMA-specific CMA:**
 ```bash
 # In GRUB: cma=256M@node0,256M@node1
-# Or at runtime: echo "numa 1" > /sys/kernel/cma_cache/command
 ```
 
 ### Common Issues & Solutions
@@ -1429,4 +1429,3 @@ ls /sys/devices/system/node/  # Shows available nodes
 | "Failed to allocate X bytes" | CMA pool too small | Increase `cma=` in GRUB |
 | Allocation on wrong NUMA node | No NUMA targeting | Use `cma=SIZE@nodeN` |
 | Memory fragmentation | High system load | Add `movable_node` parameter |
-
