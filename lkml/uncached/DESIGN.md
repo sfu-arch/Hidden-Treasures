@@ -1076,7 +1076,8 @@ cma_pdev = platform_device_alloc("cma_cache", -1);
 platform_device_add(cma_pdev);
 
 // Set DMA mask for the platform device
-dma_set_mask_and_coherent(&cma_pdev->dev, DMA_BIT_MASK(32));
+// If you set this to 32 bits, address ranges cannot exceed 4GB and you may run into issues with larger allocations
+dma_set_mask_and_coherent(&cma_pdev->dev, DMA_BIT_MASK(64));
 ```
 
 ### Large Block Allocation Algorithm

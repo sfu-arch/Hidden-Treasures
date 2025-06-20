@@ -59,21 +59,21 @@ sudo apt update
 sudo sed -i 's/^# deb-src /deb-src /' /etc/apt/sources.list
 sudo apt update
 sudo apt-get build-dep linux
-sudo apt source linux-image-$(uname -r)
+# Get kernel source for the currently running kernel
+#sudo apt source linux-image-$(uname -r)
 # Download Ubuntu kernel source package
 apt source linux-image-$(uname -r)
+# If this fails cause ubuntu only downloads signed kernel packages you can specify the hwe version that is unsigned.
+apt-get source linux-hwe-5.15=5.15.0-139.149~20.04.1
 # Enter the source directory (may vary by version)
 cd linux-*
 
 # Install Debian packaging tools
 sudo apt install -y devscripts fakeroot
 
-# Build Debian kernel packages (signed HWE variants included)
-dpkg-buildpackage -uc -us -b -j$(nproc)
-
-# Install generated kernel and headers
-cd ..
-sudo dpkg -i linux-image-*_*.deb linux-headers-*_*.deb
+#Make sure secure boot is disabled in your BIOS/UEFI settings
+# Check if Secure Boot is enabled
+mokutil --sb-state
 ```
 
 ### 2. Configure Kernel
