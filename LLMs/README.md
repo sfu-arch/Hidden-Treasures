@@ -88,10 +88,16 @@ In the context of LLMs, GPUs are used to perform the heavy matrix multiplication
 
 A parallel computing C-like language platform and application programming interface (API) model created by NVIDIA. Highly parallel language. In the context of LLMs, CUDA is often used to accelerate the training and 
 inference of these models.
-
+- [GPU Gloassary](https://modal.com/gpu-glossary/device-hardware/tensor-core)
+- [Brief History of GPUs](https://fabiensanglard.net/cuda/)
+- [Tensor Cores](https://semianalysis.com/2025/06/23/nvidia-tensor-core-evolution-from-volta-to-blackwell/)
+- [Mem Model](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/)
+- [H100. GEMM](https://cudaforfun.substack.com/p/outperforming-cublas-on-h100-a-worklog)
+- [Blackwell GEMM](https://research.colfax-intl.com/cutlass-tutorial-writing-gemm-kernels-using-tensor-memory-for-nvidia-blackwell-gpus/)
+- [MMA and WMMA](https://github.com/Bruce-Lee-LY/cuda_hgemm/tree/master/src/wmma), [Notes](https://bruce-lee-ly.medium.com/nvidia-tensor-core-getting-started-with-mma-ptx-programming-508e44a6cb7d)
 - [FAST GEMM 1](https://siboehm.com/articles/22/CUDA-MMM)
 - [FAST GEMM 2](https://alexarmbr.github.io/2024/08/10/How-To-Write-A-Fast-Matrix-Multiplication-From-Scratch-With-Tensor-Cores.html)
-
+- [Advanced: CUDA graphs](https://pytorch.org/blog/accelerating-generative-ai-2/)
 # CUDA Alternatives and DSLs
 - [Triton](https://triton-lang.org/): A python embeded domain-specific language (DSL). It allows developers to write custom GPU kernels in a Python-like syntax, making it easier to optimize and parallelize computations for LLMs and other applications. Triton is particularly useful for implementing custom operations that are not available in standard libraries, enabling fine-tuned performance on specific hardware configurations.
 - [Modular](https://www.modular.com/): A platform that provides tools and infrastructure for building and deploying AI models, including LLMs. 
