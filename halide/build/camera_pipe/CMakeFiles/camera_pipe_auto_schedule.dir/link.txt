@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcamera_pipe_auto_schedule.a camera_pipe_auto_schedule.o
+/usr/bin/ranlib libcamera_pipe_auto_schedule.a

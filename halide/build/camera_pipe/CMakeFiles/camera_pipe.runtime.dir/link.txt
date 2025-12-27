@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcamera_pipe.runtime.a camera_pipe.runtime.o
+/usr/bin/ranlib libcamera_pipe.runtime.a

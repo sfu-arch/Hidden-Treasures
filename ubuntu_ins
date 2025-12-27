@@ -1,0 +1,1028 @@
+  1004  sinfo PARTITION=studentqos
+ 1005  history | grep sacct
+ 1006  sacctmgr
+ 1007  ls
+ 1008  history | grep for
+ 1009  for i in `ls -1`; do cp .zshrc $i; done
+ 1010  for i in `ls -1`; do cp /home/ubuntu/.zshrc $i; done
+ 1011  ls
+ 1012  cd /data/home/
+ 1013  for i in `ls -1`; do cp /home/ubuntu/.zshrc $i; done
+root@ARCH-750:/data# head -n 50 ins
+ 1004  sinfo PARTITION=studentqos
+ 1005  history | grep sacct
+ 1006  sacctmgr
+ 1007  ls
+ 1008  history | grep for
+ 1009  for i in `ls -1`; do cp .zshrc $i; done
+ 1010  for i in `ls -1`; do cp /home/ubuntu/.zshrc $i; done
+ 1011  ls
+ 1012  cd /data/home/
+ 1013  for i in `ls -1`; do cp /home/ubuntu/.zshrc $i; done
+ 1014  for i in `ls -1`; do cp -r /home/ubuntu/.oh-my-zsh $i; done
+ 1015  ls
+ 1016  cd aba122/
+ 1017  ls
+ 1018  ls -all
+ 1019  cd ../
+ 1020  ls
+ 1021  for i in `ls -1`; do cp -r /home/ubuntu/.oh-my-zsh $i; done
+ 1022  ls
+ 1023  cd tnatt/
+ 1024  ls
+ 1025  ls -all
+ 1026  ls .oh-my-zsh/
+ 1027  cd ../
+ 1028  ls
+ 1029  su aba122
+ 1030  cd /home/ubuntu/
+ 1031  ls
+ 1032  ls a-ll
+ 1033  ls -all
+ 1034  cd /data/home/
+ 1035  ls
+ 1036  ls -all
+ 1037  cp -r /home/ubuntu/.oh-my-zsh .
+ 1038  for i in `ls -1`; do cp -r .oh-my-zsh $i; done
+ 1039  history
+ 1040  history | grep for
+ 1041  for i in `ls -1`; do chsh --shell /bin/zsh $i; do
+ 1042  su aba122/
+ 1043  su aba122
+ 1044  history | grep chmod
+ 1045  su aba122
+ 1046  ls
+ 1047  for i in `ls -1`; do chown $i  $i/.oh-my-zsh; done
+ 1048  for i in `ls -1`; do chown $i  $i/.zshrc; done
+ 1049  ls aba122/
+ 1050  ls -all aba122/
+ 1034  cd /data/home/
+ 1035  ls
+ 1036  ls -all
+ 1037  cp -r /home/ubuntu/.oh-my-zsh .
+ 1038  for i in `ls -1`; do cp -r .oh-my-zsh $i; done
+ 1039  history
+ 1040  history | grep for
+ 1041  for i in `ls -1`; do chsh --shell /bin/zsh $i; do
+ 1042  su aba122/
+ 1043  su aba122
+ 1044  history | grep chmod
+ 1045  su aba122
+ 1046  ls
+ 1047  for i in `ls -1`; do chown $i  $i/.oh-my-zsh; done
+ 1048  for i in `ls -1`; do chown $i  $i/.zshrc; done
+ 1049  ls aba122/
+ 1050  ls -all aba122/
+ 1051  ls
+ 1052  ls -all
+ 1053  cat .zshenv.zsh
+ 1054  su aba122
+ 1055  cat .zshrc
+ 1056  ls
+ 1057  history | grep for
+ 1058  for i in `ls -1`; do cp .zshrc $i; done
+ 1059  su aba122
+ 1060  history | grep sacctmgr
+ 1061  exit
+ 1062  su aba122
+ 1063  ssh cs-arch-03
+ 1064  ssh cs-arch03
+ 1065  exit
+ 1066  su alaa
+ 1067  ls
+ 1068  exit
+ 1069  ls
+ 1070  cd .ssh/
+ 1071  ls
+ 1072  ls -all
+ 1073  cat authorized_keys
+ 1074  cat id_rsa
+ 1075  ls -all
+ 1076  diff id_rsa.pub authorized_keys
+ 1077  cat id_rsa
+ 1078  ls
+ 1079  cat ../../aba122/.ssh/authorized_keys
+ 1080  cp ../../aba122/.ssh/authorized_keys .
+ 1081  ls
+ 1082  ls -all
+ 1083  cd ../
+ 1084  ls
+ 1085  ls -all
+ 1086  cd .oh-my-zsh/
+ 1087  ls
+ 1088  ls -all
+ 1089  chmod +x oh-my-zsh.sh
+ 1090  cd ../
+ 1091  ls
+ 1092  chmod u+x -R .oh-my-zsh/
+ 1093  cd ../
+ 1094  ls
+ 1095  history | grep for
+ 1096  for i in `ls -1`; do chmod -R +x $i/.oh-my-zsh; done
+ 1097  ls
+ 1098  su jza328
+ 1099  history | grep mount
+ 1100  exit
+ 1101  cp ../aba122/.ssh/authorized_keys .ssh/
+ 1102  cat .ssh/authorized_keys
+ 1103  cd .ssh/
+ 1104  ls -all
+ 1105  sudo usermod -a -G sudo ygk1
+ 1106  groups ygk1
+ 1107  cd ../../aba122/
+ 1108  pwd
+ 1109  exit
+ 1110  groups ygk1
+ 1111  exit
+ 1112  history | grep quota
+ 1113  repquota -s /data/ | grep ygk1
+ 1114  setquota -u alaa 52480M 52480M 0 0 /data/
+ 1115  setquota -u ygk1 52480M 52480M 0 0 /data/
+ 1116  repquota -s /data/ | grep ygk1
+ 1117  ls -all
+ 1118  cd /data/home/
+ 1119  ls
+ 1120  su ygk1
+ 1121  passwd ydk1
+ 1122  passwd ygk1
+ 1123  su ygk1
+ 1124  sudo systemctl status slurmctld
+ 1125  ls
+ 1126  cd /var/
+ 1127  ls
+ 1128  cd run
+ 1129  ls
+ 1130  history | sudo mkdir /var/run/slurm-llnl
+ 1131  sudo chown slurm /var/run/slurm-llnl
+ 1132  sudo chgrp slurm /var/run/slurm-llnl
+ 1133  ls
+ 1134  history | grep sudo
+ 1135  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1136  cat /var/log/slurm-llnl/slurmd.log
+ 1137  history | grep 6818
+ 1138  netstat -anpe | grep "6818" | grep "LISTEN"
+ 1139  kill -9 63762
+ 1140  kill -9 1279
+ 1141  kill -9 63762
+ 1142  netstat -anpe | grep "6818" | grep "LISTEN"
+ 1143  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1144  sudo systemctl status slurmdbd slurmd slurmctld
+ 1145  sudo systemctl status slurmdbd
+ 1146  sudo systemctl status slurmd
+ 1147  cat /var/log/slurm-llnl/slurmdbd.log
+ 1148  cat /var/log/slurm-llnl/slurmd.log
+ 1149  cat /var/log/slurm-llnl/slurmctld.log
+ 1150  ls
+ 1151  sudo systemctl status slurmctld
+ 1152  exit
+ 1153  history
+ 1154  history | grep slurm-llnl
+ 1155  sudo mkdir /var/run/slurm-llnl
+ 1156  sudo chown slurm /var/run/slurm-llnl
+ 1157  sudo chgrp slurm /var/run/slurm-llnl
+ 1158  history
+ 1159  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1160  netstat -anpe | grep "6818" | grep "LISTEN"
+ 1161  kill -9 1473
+ 1162  netstat -anpe | grep "6818" | grep "LISTEN"
+ 1163  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1164  squeue
+ 1165  sinfo
+ 1166  scontrol
+ 1167  sinfo
+ 1168  scontrol
+ 1169  sinfo
+ 1170  scontrol
+ 1171  sinfo
+ 1172  history | grep mount
+ 1173  exit
+ 1174  history
+ 1175  sudo mkdir /var/run/slurm-llnl
+ 1176  sudo chown slurm /var/run/slurm-llnl
+ 1177  sudo chgrp slurm /var/run/slurm-llnl
+ 1178  netstat -anpe | grep "6818" | grep "LISTEN"
+ 1179  kill -9 1432
+ 1180  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1181  ls
+ 1182  cd /data/home/
+ 1183  ls
+ 1184  history | grep quota
+ 1185  setquota -u bniwa 32480M 32480M 0 0 /data/
+ 1186  history | grep quota
+ 1187  quota --user bniwa
+ 1188  setquota -u bniwa 52480M 52480M 0 0 /data/
+ 1189  cd /home
+ 1190  ls
+ 1191  cd /
+ 1192  ls
+ 1193  cd /data/
+ 1194  ls
+ 1195  cd home/
+ 1196  ls
+ 1197  df -h
+ 1198  df -h | egrep -v -e 'snap|run'
+ 1199  repquota
+ 1200  repquota -a
+ 1201  repquota -ah
+ 1202  repquota -a -h
+ 1203  repquota -a -s
+ 1204  for i in $(members cmpt-450); do echo $i; done
+ 1205  apt install members
+ 1206  members cmpt-450
+ 1207  repquota -as
+ 1208  for i in $(ls); do echo $i; done
+ 1209  for i in $(ls); do echo $i; setquota -u $i 80G 80G 0 0; done
+ 1210  cat /etc/fstab
+ 1211  for i in $(ls); do echo $i; setquota -u $i 80G 80G 0 0 /data; done
+ 1212  repquota -as
+ 1213  ls
+ 1214  cd ../
+ 1215  ls
+ 1216  cd /data/localhome
+ 1217  cd /data/
+ 1218  ls
+ 1219  cd home/
+ 1220  ls
+ 1221  cd aha149
+ 1222  ls
+ 1223  ls -all
+ 1224  cd .ssh
+ 1225  ls
+ 1226  ls -all
+ 1227  diff authorized_keys id_rsa.pub
+ 1228  ls
+ 1229  cat authorized_keys
+ 1230  cd ../
+ 1231  ls
+ 1232  cd ../
+ 1233  ls
+ 1234  cd abk3/
+ 1235  ls
+ 1236  cat .ssh/authorized_keys
+ 1237  cd ../aha149/
+ 1238  ls
+ 1239  cd .ssh/authorized_keys
+ 1240  cd .ssh/
+ 1241  cat authorized_keys
+ 1242  code authorized_keys
+ 1243  emacs authorized_keys
+ 1244  cat ../../ama265/.ssh/authorized_keys
+ 1245  emacs ../../ama265/.ssh/authorized_keys
+ 1246  emacs authorized_keys
+ 1247  cd /data/home/
+ 1248  ls
+ 1249  cd aha149/
+ 1250  ls
+ 1251  ls -all
+ 1252  cd .ssh/
+ 1253  ls
+ 1254  cat authorized_keys
+ 1255  ls
+ 1256  cd aha149/
+ 1257  ls
+ 1258  cd authorized_keys
+ 1259  cat authorized_keys
+ 1260  cd ../../
+ 1261  ls
+ 1262  cd .ssh/
+ 1263  ls
+ 1264  cat authorized_keys
+ 1265  ls
+ 1266  mv authorized_keys authorized_keys.bak
+ 1267  emacs authorized_keys
+ 1268  chmod 600 authorized_keys
+ 1269  ls
+ 1270  ls -all
+ 1271  cp authorized_keys authorized_keys2
+ 1272  ls
+ 1273  cp ../../dbingman/.ssh/authorized_keys .
+ 1274  cd ../../dbingman/
+ 1275  ls
+ 1276  cd .ssh/
+ 1277  ls -all
+ 1278  cd ../../aha149/
+ 1279  ls
+ 1280  cd .ssh/
+ 1281  chmod 664 authorized_keys
+ 1282  ls -all
+ 1283  rm authorized_keys2
+ 1284  cat authorized_keys
+ 1285  ls
+ 1286  emacs authorized_keys
+ 1287  ls
+ 1288  ls -all
+ 1289  history
+ 1290  ps -al | grep slurmd
+ 1291  ps -el | grep slurmd
+ 1292  ps -el | grep slurmctld
+ 1293  kill -9 1386
+ 1294  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1295  netstat -anpe | grep "6818" | grep "LISTEN"
+ 1296  ps -el | grep slurmd
+ 1297  ps -el | grep slurmctld
+ 1298  sudo systemctl status slurmctld
+ 1299  sudo systemctl status slurmdbd
+ 1300  sudo mkdir /var/run/slurm-llnl
+ 1301  sudo chown slurm /var/run/slurm-llnl
+ 1302  sudo chgrp slurm /var/run/slurm-llnl
+ 1303  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1304  cat /var/log/slurm-llnl/slurmdbd.log
+ 1305  sudo systemctl stop slurmdbd slurmd slurmctld
+ 1306  sudo systemctl status slurmdbd slurmd slurmctld
+ 1307  sudo systemctl status slurmdbd
+ 1308  sudo systemctl start slurmdbd slurmd slurmctld
+ 1309  sudo systemctl stop slurmdbd slurmd slurmctld
+ 1310  netstat -anpe | grep "6818" | grep "LISTEN"
+ 1311  kill -9 217384
+ 1312  netstat -anpe | grep "6818" | grep "LISTEN"
+ 1313  sudo systemctl status slurmdbd slurmd slurmctld
+ 1314  sudo systemctl status slurmd
+ 1315  sudo systemctl status slurmdbd
+ 1316  sudo systemctl status slurmctld
+ 1317  ls -all /var/run/slurm-llnl/
+ 1318  history | grep slurm
+ 1319  emacs /etc/slurm-llnl/slurm.conf
+ 1320  ls
+ 1321  cat /var/log/slurm-llnl/slurmd.log
+ 1322  systemctl start slurmdbd
+ 1323  systemctl status slurmdbd
+ 1324  systemctl start slurmd
+ 1325  systemctl status slurmd
+ 1326  systemctl start slurmctld
+ 1327  systemctl status slurmctld
+ 1328  sinfo
+ 1329  ls
+ 1330  scontrol
+ 1331  history | grep sacct
+ 1332  cd /data/home/
+ 1333  ls
+ 1334  for i in `ls -1 /data/home`;do sacctmgr -i del user $i account=students; done
+ 1335  ls
+ 1336  for i in `ls -1 /data/home`;do sacctmgr -i add user mam47 account=students; done
+ 1337  sinfo
+ 1338  ls
+ 1339  cd ~/
+ 1340  ls
+ 1341  cd snap/
+ 1342  ls
+ 1343  exit
+ 1344  rm -rf *
+ 1345  cd ..
+ 1346  ls
+ 1347  w
+ 1348  mv * .old-homes/
+ 1349  mv .old-homes/{ma47,alaa,ashriram} .
+ 1350  ls
+ 1351  mv .old-homes/mam47/ .
+ 1352  ls
+ 1353  quota -u alaa
+ 1354  quota -us alaa
+ 1355  quota -us mam47
+ 1356  quota -us ashriram
+ 1357  repquota
+ 1358  repquota -a
+ 1359  cat /etc/passwd
+ 1360  man userdel
+ 1361  cd .old-homes/
+ 1362  ls
+ 1363  for i in $(ls); do echo $i; done
+ 1364  mv sjayewar/ ..
+ 1365  for i in $(ls); do echo $i; userdel -r $i; read; done
+ 1366  grep aba122 /etc/passwd
+ 1367  for i in $(ls); do echo $i; userdel -r $i; done
+ 1368  quota -u aca205
+ 1369  su aca205
+ 1370  exit
+ 1371  history
+ 1372  quota -u alaa
+ 1373  ls
+ 1374  quota -u cac34
+ 1375  cd ../
+ 1376  for i in `ls -1 /data/home`;do sacctmgr -i add user $i account=students; done
+ 1377  ls
+ 1378  su cac34
+ 1379  history | grep chown
+ 1380  for i in `ls -1`; do chown $i  $i/.oh-my-zsh; done
+ 1381  su cac34
+ 1382  cd cac34/
+ 1383  ls
+ 1384  ls -all
+ 1385  cd .oh-my-zsh/
+ 1386  ls -all
+ 1387  cd ../../
+ 1388  ls
+ 1389  for i in `ls -1`; do chmod +x   $i/.oh-my-zsh; done
+ 1390  su cac34
+ 1391  for i in `ls -1`; do chown $i -R  $i/.oh-my-zsh; done
+ 1392  cd cac34/
+ 1393  su cac34
+ 1394  ls
+ 1395  ls -all
+ 1396  chown -R cac34 .oh-my-zsh/
+ 1397  ls -all
+ 1398  chgrp -R cac34 .oh-my-zsh/
+ 1399  ls -all
+ 1400  cd .oh-my-zsh/
+ 1401  ls
+ 1402  ls -all
+ 1403  chmod +x oh-my-zsh.sh
+ 1404  su cac34
+ 1405  cd ../
+ 1406  ls -all
+ 1407  rm -rf .oh-my-zsh/
+ 1408  cp -r cac34/.oh-my-zsh .
+ 1409  history | grep cp
+ 1410  for i in `ls -1`; do cp -r .oh-my-zsh $i; done
+ 1411  for i in `ls -1`; do chown $i -R  $i/.oh-my-zsh; done
+ 1412  ls
+ 1413  su cac34
+ 1414  su myrony
+ 1415  for i in `ls -1`; do chmod +x -R  $i/.oh-my-zsh; done
+ 1416  su myrony
+ 1417  su aca205
+ 1418  ls
+ 1419  su cha198
+ 1420  for i in `ls -1`; do su $i; done
+ 1421  cd /data/home/
+ 1422  ls
+ 1423  quota alaa
+ 1424  quota mam47
+ 1425  quota -uh mam47
+ 1426  quota -us mam47
+ 1427  quota -us alaa
+ 1428  ls
+ 1429  quota epini
+ 1430  quot -us mam47
+ 1431  quota -us mam47
+ 1432  quota -us ashriram
+ 1433  setquota -u alaa 80G 80G 0 0 /data
+ 1434  setquota -u mam46 80G 80G 0 0 /data
+ 1435  setquota -u mam47 80G 80G 0 0 /data
+ 1436  ls
+ 1437  history
+ 1438  history
+ 1439  sacctmgr -i add user rwa116 account=students
+ 1440  sacctmgr -i del user rwa116 account=students
+ 1441  sacctmgr -i add user rwa116 account=students
+ 1442  sacctmgr
+ 1443  cd /data/home/
+ 1444  ls
+ 1445  cd smc26/
+ 1446  ls
+ 1447  ls -all
+ 1448  cd .ssh/
+ 1449  ls
+ 1450  cd ../
+ 1451  ls
+ 1452  cd ../
+ 1453  ls -all
+ 1454  cd .ssh/
+ 1455  ls
+ 1456  cd ../smc26/
+ 1457  ls
+ 1458  cat .ssh/authorized_keys
+ 1459  cd ../
+ 1460  ls
+ 1461  cd myrony/
+ 1462  ls
+ 1463  cd .ssh/
+ 1464  ls
+ 1465  cat authorized_keys
+ 1466  ls
+ 1467  cd ../../smc26/
+ 1468  ls
+ 1469  cd .ssh/
+ 1470  ls
+ 1471  emacs authorized_keys
+ 1472  ls
+ 1473  history | add sudo
+ 1474  history | grep sudo
+ 1475  history | grep sudoers
+ 1476  sudo usermod -aG sudo mam47
+ 1477  exit
+ 1478  passwd mam47
+ 1479  history
+ 1480  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1481  sacctmgr show assoc format=account,user,partition where user=rwa116
+ 1482  sacctmgr show assoc format=account,user,partition where user=mam47
+ 1483  scontrol show assoc
+ 1484  scontrol show assoc | grep mam47
+ 1485  scontrol show assoc | grep rwa116
+ 1486  ls
+ 1487  cd ../
+ 1488  ls
+ 1489  cd mam47/
+ 1490  ls
+ 1491  cd .ssh/
+ 1492  ls
+ 1493  code authorized_keys
+ 1494  cat authorized_keys
+ 1495  cd ../
+ 1496  cdd ..
+ 1497  ls
+ 1498  cd ..
+ 1499  ls
+ 1500  cd ala249/
+ 1501  ls
+ 1502  ls -a
+ 1503  cd .ssh/
+ 1504  ls
+ 1505  cat authorized_keys
+ 1506  diff authorized_keys ../../mam47/.ssh/authorized_keys
+ 1507  cd ..
+ 1508  ls
+ 1509  ls wshalabi/
+ 1510  ls bss12/
+ 1511  ls
+ 1512  cd ama269/
+ 1513  ls
+ 1514  cat .ssh/authorized_keys .
+ 1515  cat .ssh/authorized_keys
+ 1516  cd ..
+ 1517  ls
+ 1518  cd mam47/
+ 1519  ls
+ 1520  exit
+ 1521  cd ../
+ 1522  ls
+ 1523  cd ama225
+ 1524  ls
+ 1525  cd ..
+ 1526  ls
+ 1527  cd ../ama2
+ 1528  cd ../ama225
+ 1529  ls
+ 1530  cd .ssh/
+ 1531  ls
+ 1532  cat authorized_keys
+ 1533  cd ..
+ 1534  ls
+ 1535  cd ..
+ 1536  ls
+ 1537  cd mam47/
+ 1538  ls
+ 1539  cd .ssh/
+ 1540  ls
+ 1541  cat authorized_keys
+ 1542  cd ../
+ 1543  cd ..
+ 1544  ls
+ 1545  exit
+ 1546  cd .ssh/
+ 1547  ls
+ 1548  cat authorized_keys
+ 1549  ls ../../mam47/.ssh/
+ 1550  cat ../../mam47/.ssh//authorized_keys
+ 1551  cd ../
+ 1552  cd ..
+ 1553  ls
+ 1554  cat ama225/.ssh/authorized_keys
+ 1555  cat bhow/.ssh/authorized_keys
+ 1556  cd vamarnan/
+ 1557  ls
+ 1558  cd .ssh/
+ 1559  ls
+ 1560  cat authorized_keys
+ 1561  cat "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCys1LVTeEsm+61Nv/nocH6x9gAQbp2aV1BKOKtJ+zKdUsXznG9y6eDzSz4pOYCwmaS/1TVlhx22wsslt/fcxFdGR7Y589FpcgZUf9GmtrsvqDb4+yKJiVDY6QLo61rbxwuGp6kx9R1vQI1CNohLYdLx8yWKMMtrQW+j1RkeGm1gxTebVG7TCeDTPh0o/UgIi6mKZrScMZYJpW1565dhBv1N0ujGOAnQGNgyl3hF7w8qJDtHXtCPVxqnzV/458moD3OXWrv4E4oHQDZNNAIlQVpBOiDm+L5kZBSwsyV2RCsqB/CncuI0kVk21v38kCIShpH6/KiX4ERoRVeZc2x53fzXpnZ7v1WoRh+fvk9N7o+Uryv+w1CUJBydriYCenyOSPVm3+nSFNR0yYBJLE4F+0CoZ8c4/GXgUSOwdPJ7nyTSwVHYHjUHewdRSKO+zzzZ9gaeXNH67ajHHjGDG1SPJqur7EZp3WKELWR7MtITvgJv0+1zjVxvVHoN9bUPjUKVH8= sjayewar@ubuntu-sfu" >> authorized_keys
+ 1562  echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCys1LVTeEsm+61Nv/nocH6x9gAQbp2aV1BKOKtJ+zKdUsXznG9y6eDzSz4pOYCwmaS/1TVlhx22wsslt/fcxFdGR7Y589FpcgZUf9GmtrsvqDb4+yKJiVDY6QLo61rbxwuGp6kx9R1vQI1CNohLYdLx8yWKMMtrQW+j1RkeGm1gxTebVG7TCeDTPh0o/UgIi6mKZrScMZYJpW1565dhBv1N0ujGOAnQGNgyl3hF7w8qJDtHXtCPVxqnzV/458moD3OXWrv4E4oHQDZNNAIlQVpBOiDm+L5kZBSwsyV2RCsqB/CncuI0kVk21v38kCIShpH6/KiX4ERoRVeZc2x53fzXpnZ7v1WoRh+fvk9N7o+Uryv+w1CUJBydriYCenyOSPVm3+nSFNR0yYBJLE4F+0CoZ8c4/GXgUSOwdPJ7nyTSwVHYHjUHewdRSKO+zzzZ9gaeXNH67ajHHjGDG1SPJqur7EZp3WKELWR7MtITvgJv0+1zjVxvVHoN9bUPjUKVH8= sjayewar@ubuntu-sfu" >> ./authorized_keys
+ 1563  cat authorized_keys
+ 1564  cd ../
+ 1565  cd ..
+ 1566  ls
+ 1567  cd mam47/
+ 1568  ls
+ 1569  history | grep systemctl
+ 1570  ps aux --sort pcpu
+ 1571  systemctl restart slurmdbd slurmd slurmctld
+ 1572  exit
+ 1573  l
+ 1574  cd ../
+ 1575  cat /etc/passwd | grep Yong
+ 1576  cat /etc/passwd | grep Seo
+ 1577  cd seoyongs/.ssh/
+ 1578  ls
+ 1579  cat authorized_keys
+ 1580  cat ../../mam47/.ssh/authorized_keys
+ 1581  echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCys1LVTeEsm+61Nv/nocH6x9gAQbp2aV1BKOKtJ+zKdUsXznG9y6eDzSz4pOYCwmaS/1TVlhx22wsslt/fcxFdGR7Y589FpcgZUf9GmtrsvqDb4+yKJiVDY6QLo61rbxwuGp6kx9R1vQI1CNohLYdLx8yWKMMtrQW+j1RkeGm1gxTebVG7TCeDTPh0o/UgIi6mKZrScMZYJpW1565dhBv1N0ujGOAnQGNgyl3hF7w8qJDtHXtCPVxqnzV/458moD3OXWrv4E4oHQDZNNAIlQVpBOiDm+L5kZBSwsyV2RCsqB/CncuI0kVk21v38kCIShpH6/KiX4ERoRVeZc2x53fzXpnZ7v1WoRh+fvk9N7o+Uryv+w1CUJBydriYCenyOSPVm3+nSFNR0yYBJLE4F+0CoZ8c4/GXgUSOwdPJ7nyTSwVHYHjUHewdRSKO+zzzZ9gaeXNH67ajHHjGDG1SPJqur7EZp3WKELWR7MtITvgJv0+1zjVxvVHoN9bUPjUKVH8= sjayewar@ubuntu-sfu" > authorized_keys
+ 1582  cat authorized_keys
+ 1583  echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDE4uqdgiryj3iLCAEFSVAD2gbxGnUgaxzVpGU+n+mMkdni7+au8EXF33D+cwYCwAkyltL8f52sUVr4ia/IoVwZ/MEahC+sfEQG/wYvITxPqu8u5xtk6mZrCuVQrXxAFwPECDBsIrXG0LMioui9gBosknXuv1vjgR2pmABsgcBAduqRdrpSLovvg9eo6sE3uGCtOPh/yMHSHYUs/FihqLY7Z1mh0ERPn4QrfoF1MHzzEtnMx9aHfEpOCVd2ocMxCVFaJ6YoU/g5SlvTnD9R8VdXe9T/hU+VD/MZVwv2ndTYzDoXxivn+V2SuHoFgy9SpcapwF8G3beN6MIiK+VaGyiQdDtfI/UIcDWl/x768V5r0FLf8up3FBDfA5/C9x76JCFbTDV3sMRk8q7pLYM2uQkCmrK44Nb7V6DcUdS3kbz/wf2hQWwbq0gNBCy2dobTZnJDs1pfs8GVeZlZqF72vy7PcOg7DZdADErZCk+590HKxTC8Ccz2LK0ZsGA8o1tWPJE= seoyongs@ARCH-750" >> authorized_keys
+ 1584  echo authorized_keys
+ 1585  cat authorized_keys
+ 1586  whoami
+ 1587  su - mam47
+ 1588  su - jooeunp
+ 1589  history | grep systemctl
+ 1590  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1591  systemctl status slurmctld
+ 1592  su - jooeunp
+ 1593  scontrol show assoc
+ 1594  scontrol show assoc | grep joo
+ 1595  scontrol show assoc | grep mam47
+ 1596  service slurmctld restart
+ 1597  cd ../../../../
+ 1598  ls
+ 1599  service slurmctld restart
+ 1600  su - jooeunp
+ 1601  ls
+ 1602  cd home
+ 1603  ls
+ 1604  cd ubuntu/
+ 1605  ls
+ 1606  cd ../
+ 1607  ls
+ 1608  cd ..
+ 1609  cd /data/home/
+ 1610  ls
+ 1611  cd seoyongs/
+ 1612  ls
+ 1613  cd .ssh/
+ 1614  ls
+ 1615  cat authorized_keys
+ 1616  ls
+ 1617  cat /data/home/mam47/.ssh/authorized_keys
+ 1618  ls
+ 1619  echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCys1LVTeEsm+61Nv/nocH6x9gAQbp2aV1BKOKtJ+zKdUsXznG9y6eDzSz4pOYCwmaS/1TVlhx22wsslt/fcxFdGR7Y589FpcgZUf9GmtrsvqDb4+yKJiVDY6QLo61rbxwuGp6kx9R1vQI1CNohLYdLx8yWKMMtrQW+j1RkeGm1gxTebVG7TCeDTPh0o/UgIi6mKZrScMZYJpW1565dhBv1N0ujGOAnQGNgyl3hF7w8qJDtHXtCPVxqnzV/458moD3OXWrv4E4oHQDZNNAIlQVpBOiDm+L5kZBSwsyV2RCsqB/CncuI0kVk21v38kCIShpH6/KiX4ERoRVeZc2x53fzXpnZ7v1WoRh+fvk9N7o+Uryv+w1CUJBydriYCenyOSPVm3+nSFNR0yYBJLE4F+0CoZ8c4/GXgUSOwdPJ7nyTSwVHYHjUHewdRSKO+zzzZ9gaeXNH67ajHHjGDG1SPJqur7EZp3WKELWR7MtITvgJv0+1zjVxvVHoN9bUPjUKVH8= sjayewar@ubuntu-sfu" >> authorized_keys
+ 1620  cat id_rsa.pub >> authorized_keys
+ 1621  cat authorized_keys
+ 1622  ls
+ 1623  cat authorized_keys
+ 1624  ls
+ 1625  ls ..
+ 1626  cp /data/home/mam47/.ssh/authorized_keys .
+ 1627  ls
+ 1628  ls -a
+ 1629  cd ..
+ 1630  l
+ 1631  cd .ssh/
+ 1632  ls
+ 1633  cat authorized_keys
+ 1634  cp /data/home/mam47/.ssh/authorized_keys .
+ 1635  cat authorized_keys
+ 1636  ls
+ 1637  cat authorized_keys
+ 1638  cd ..
+ 1639  cd ../ama225/
+ 1640  ls
+ 1641  cd .ssh/
+ 1642  ls
+ 1643  cat authorized_keys
+ 1644  cd ../..
+ 1645  ls
+ 1646  cd jooeunp/
+ 1647  ls
+ 1648  cd .ssh/
+ 1649  ls
+ 1650  cat authorized_key
+ 1651  cd ../
+ 1652  ls
+ 1653  cd ..
+ 1654  ls
+ 1655  su - oelsheha
+ 1656  su - jooeunp
+ 1657  history | grep sys
+ 1658  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1659  su - jooeunp
+ 1660  exit
+ 1661  sacctmgr show assoc
+ 1662  sacctmgr show assoc | grep joo
+ 1663  history | grep systemctl
+ 1664  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1665  ls
+ 1666  systemctl restart slurmdbd slurmd slurmctld
+ 1667  ls
+ 1668  cd ..
+ 1669  su - jooeunp
+ 1670  ls
+ 1671  cd ..
+ 1672  ls
+ 1673  cd home/
+ 1674  ls
+ 1675  sacctmgr modify user where user=jooeunp set defaultaccount=students
+ 1676  sacctmgr show assoc | grep jooe
+ 1677  su - jooeunp
+ 1678  cd ..
+ 1679  ls
+ 1680  su - jooeunp
+ 1681  vim .local/modules/init/zsh
+ 1682  su - jooeunp
+ 1683  cd home/seoyongs/
+ 1684  ls
+ 1685  cd .ssh/
+ 1686  ls
+ 1687  du authorized_keys
+ 1688  cat authorized_keys
+ 1689  ls
+ 1690  cat id_rsa.pub
+ 1691  echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCpCKOVQJlq7WvgmAvD7HokGhHUAuRaVwUvRx2Sj7DR1ktBDVv1XbOsBddg/6S9HXZ5F3rl0YqB3Trmtj9JKXvn+YZhqcS0/caTO75JabZxq1tNaWNC54PYuAMa2Yj+lB7nKRFJ++xGgMpZszMzmbk7CtgCv/Y9kXQPzxFH+/L6PUaKC7YR/uYNkRUuWphoepiTb2Icz4KzO/3yIuJtg0BUTkdHXFo/jj9ipgUhOgG+wvMY4L5M5IQM9bSCS6OH5C2P/XclfWZULYX+fF6UArZM8X+fMOquMRSH7Z5uay5l2Xd44D8qK0UfcpKdk+xKiCJQ+JlXM8LuO+M1b2PNmSkzFs8Eg23i2ladvwB5OeMe5zU+ZamAyf9UNFkpEfh2qjBwOVLVslhrAb/0SEZqfWG8tf1vPaLRGWcZwbtKhS6ppkBGb7AnsR6cggbyKh3FAvRIiQ+Gp0JdLOnDSWLTddYFmwqoXGLe7JCkUwXY7s1q+ApnCgO9oU88znIuUs8Nt6s= seoyongs@ARCH-750" >> authorized_keys
+ 1692  cd ../
+ 1693  su - ama225
+ 1694  exit
+ 1695  ls
+ 1696  cd .ssh/
+ 1697  ls
+ 1698  cat authorized_keys
+ 1699  cat ../../mam47/.ssh/authorized_keys
+ 1700  echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCys1LVTeEsm+61Nv/nocH6x9gAQbp2aV1BKOKtJ+zKdUsXznG9y6eDzSz4pOYCwmaS/1TVlhx22wsslt/fcxFdGR7Y589FpcgZUf9GmtrsvqDb4+yKJiVDY6QLo61rbxwuGp6kx9R1vQI1CNohLYdLx8yWKMMtrQW+j1RkeGm1gxTebVG7TCeDTPh0o/UgIi6mKZrScMZYJpW1565dhBv1N0ujGOAnQGNgyl3hF7w8qJDtHXtCPVxqnzV/458moD3OXWrv4E4oHQDZNNAIlQVpBOiDm+L5kZBSwsyV2RCsqB/CncuI0kVk21v38kCIShpH6/KiX4ERoRVeZc2x53fzXpnZ7v1WoRh+fvk9N7o+Uryv+w1CUJBydriYCenyOSPVm3+nSFNR0yYBJLE4F+0CoZ8c4/GXgUSOwdPJ7nyTSwVHYHjUHewdRSKO+zzzZ9gaeXNH67ajHHjGDG1SPJqur7EZp3WKELWR7MtITvgJv0+1zjVxvVHoN9bUPjUKVH8= sjayewar@ubuntu-sfu" >> authorized_keys
+ 1701  cat authorized_keys
+ 1702  exit
+ 1703  cd ../
+ 1704  ls
+ 1705  cat /etc/passwd | grep gza
+ 1706  cat /etc/passwd | grep Raj
+ 1707  cat /etc/passwd | grep Pat
+ 1708  getent group sudo
+ 1709  cd /data/home/rajp/
+ 1710  ls -al
+ 1711  chgrp ragp .oh-my-zsh/
+ 1712  chgrp rajp .oh-my-zsh/
+ 1713  cd ..
+ 1714  ls
+ 1715  cd jaodf
+ 1716  cd jarodf/
+ 1717  ls
+ 1718  ls -l
+ 1719  cd par3
+ 1720  cd ../par3
+ 1721  cd ../zya122
+ 1722  ls
+ 1723  ls -l
+ 1724  ls -al
+ 1725  cd .oh-my-zsh/
+ 1726  ls -al
+ 1727  cd ../../rajp
+ 1728  cd .oh-my-zsh/
+ 1729  ls -al
+ 1730  cd /data/home/oelsheha/
+ 1731  ls
+ 1732  ls -al
+ 1733  cd .oh-my-zsh/
+ 1734  cd /data/home/sjayewar/
+ 1735  ls -al
+ 1736  cd .oh-my-zsh/
+ 1737  ls
+ 1738  ls -al
+ 1739  cd ../../
+ 1740  rm -rf sjayewar/
+ 1741  cd sjayewar/
+ 1742  ls -al
+ 1743  cd ..
+ 1744  rm -rf sjayewar/
+ 1745  cd sjayewar/
+ 1746  ls -al
+ 1747  cd .oh-my-zsh/
+ 1748  ls -al
+ 1749  cd plugins/
+ 1750  ls -l
+ 1751  cd ../../
+ 1752  ls -al
+ 1753  cd ..
+ 1754  rm -rf sjayewar
+ 1755  ls -l
+ 1756  cd sjayewar/
+ 1757  ls -al
+ 1758  cd .oh-my-zsh/
+ 1759  ls
+ 1760  ls -al
+ 1761  cd ../../
+ 1762  ls -l
+ 1763  ls -ld pirani/
+ 1764  cd pirani/
+ 1765  ls -al
+ 1766  cd ../rajp/
+ 1767  ls -al
+ 1768  cd .oh-my-zsh/
+ 1769  ls -al
+ 1770  cat /etc/passwd/ | grep Abdel
+ 1771  cat /etc/passwd | grep Abde
+ 1772  cat /etc/passwd | grep Abd
+ 1773  cat /etc/passwd | grep
+ 1774  cat /etc/passwd
+ 1775  cd aha49/
+ 1776  ls
+ 1777  cd .ssh/
+ 1778  ls
+ 1779  car authorized_keys
+ 1780  cat authorized_keys
+ 1781  cd ../../
+ 1782  ls
+ 1783  cd aha149/
+ 1784  ls
+ 1785  cd ..
+ 1786  exit
+ 1787  cd ../bss12/
+ 1788  ls
+ 1789  cd .ssh/
+ 1790  ls
+ 1791  cd ../pfreitas/
+ 1792  ls
+ 1793  cd a3-pedben/
+ 1794  ls
+ 1795  cd bin/
+ 1796  ls
+ 1797  cd ..
+ 1798  ls
+ 1799  git status
+ 1800  cd ..
+ 1801  ls
+ 1802  cp a3-pedben/ ../mam47/
+ 1803  cp a3-pedben/ ../mam47/ -r
+ 1804  cd ../mam47/
+ 1805  ls
+ 1806  cd a3-pedben/
+ 1807  ls
+ 1808  code submit.sh
+ 1809  exit
+ 1810  ls
+ 1811  rm -rf ./.git/
+ 1812  chmod +x ./submit.sh
+ 1813  ./submit.sh
+ 1814  ls
+ 1815  code run_champsim.sh
+ 1816  vim run_champsim.sh
+ 1817  ./run_champsim.sh ./bin/perceptron-no-my-no-lru-1core 1 10 600.perlbench_s-210B.champsimtrace.x
+ 1818  ./run_champsim.sh ./bin/perceptron-no-my-no-lru-1core 1 10 600.perlbench_s-210B.champsimtrace.xz
+ 1819  ls
+ 1820  exit
+ 1821  rm -rf ./results_10M/
+ 1822  exit
+ 1823  ls
+ 1824  rm -rf a3-pedben/
+ 1825  exit
+ 1826  cd pfreitas/
+ 1827  cd a30
+ 1828  cd a3-pedben/
+ 1829  ls
+ 1830  cd bin/
+ 1831  ls
+ 1832  df -h
+ 1833  repquota
+ 1834  repquota -a
+ 1835  ls
+ 1836  cd /data/
+ 1837  ls
+ 1838  cd home/
+ 1839  ls
+ 1840  quota -u jiatangz
+ 1841  repquota -a
+ 1842  ls
+ 1843  for i in $(ls); do echo $i; done
+ 1844  for i in $(ls); do setquota -u $i 80G 80G 0 0 /data; done
+ 1845  repquota -a
+ 1846  repquota -as
+ 1847  quota -us yma50
+ 1848  cd ..
+ 1849  ls
+ 1850  cat /etc/passwd
+ 1851  cd ama225/
+ 1852  ls
+ 1853  cd a1-alenmehmed/
+ 1854  ls
+ 1855  cd plots/
+ 1856  ls
+ 1857  mkdir ../../../mam47/alan
+ 1858  ls
+ 1859  cp * ../../../mam47/alan
+ 1860  cd ../../../mam47/alan
+ 1861  exit
+ 1862  ls
+ 1863  cd ../rwa116/
+ 1864  ls
+ 1865  cd Assignments/
+ 1866  ls
+ 1867  cd a3-ryanwittkopf/
+ 1868  ls
+ 1869  cd ../a1
+ 1870  cd ../a1-rwa116/
+ 1871  ls
+ 1872  cd results/
+ 1873  ls
+ 1874  cd X86/
+ 1875  ls
+ 1876  cd run_micro/
+ 1877  ls
+ 1878  cd DP1f/
+ 1879  ls
+ 1880  cd DefaultO3/
+ 1881  ls
+ 1882  cd Slow/
+ 1883  ls
+ 1884  cd ../
+ 1885  ls
+ 1886  cd ..
+ 1887  ls
+ 1888  cd roi/
+ 1889  ls
+ 1890  cd Minor4/
+ 1891  ls
+ 1892  cd ../../
+ 1893  ls
+ 1894  cd ../../
+ 1895  ls
+ 1896  cd ..
+ 1897  ls
+ 1898  cd ..
+ 1899  ls
+ 1900  vim README.md
+ 1901  cd results/X86/run_micro/
+ 1902  sl
+ 1903  ls
+ 1904  cd DP1f/
+ 1905  ls
+ 1906  cd roi/
+ 1907  ls
+ 1908  cd Minor4/
+ 1909  ls
+ 1910  cd  Slow/
+ 1911  ls
+ 1912  cd 1GHz/
+ 1913  ls
+ 1914  code stats.txt
+ 1915  cim stats.txt
+ 1916  vim stats.txt
+ 1917  cd ..
+ 1918  ls
+ 1919  cd 2GHz/
+ 1920  ls
+ 1921  vim stats.txt
+ 1922  cd ../../../../../../
+ 1923  cd ../../
+ 1924  ls
+ 1925  vim README.md
+ 1926  vim launch_frequency.py
+ 1927  cd ../../../
+ 1928  exit
+ 1929  ls
+ 1930  history
+ 1931  sinfo PARTITION=studentqos
+ 1932  history | grep scontrol
+ 1933  sacctmgr -i modify qos studentqos set MaxWallDurationPerJob=120:00
+ 1934  sinfo PARTITION=studentqos
+ 1935  sacctmgr -i modify qos studentqos set MaxWallDurationPerJob=60:00
+ 1936  sinfo PARTITION=studentqos
+ 1937  sacctmgr -i modify qos studentqos set MaxWallDurationPerJob=2:00:00
+ 1938  sinfo PARTITION=studentqos
+ 1939  sacctmgr
+ 1940  sacctmgr -i modify qos studentqos set MaxWall=2:00:00
+ 1941  sinfo PARTITION=studentqos
+ 1942  sacctmgr -i modify qos studentqos set  asdMaxWall=2:00:00
+ 1943  sacctmgr -i modify qos studentqos set MaxWall=2:00:00
+ 1944  sacctmgr -i modify qos studentqos set MaxWallDurationPerJob==2:00:00
+ 1945  sinfo PARTITION=studentqos
+ 1946  cd /etc/slurm-llnl/
+ 1947  ls
+ 1948  cat slurm.conf
+ 1949  vi /etc/slurm-llnl/slurm.conf
+ 1950  history | grep systemctl
+ 1951  sudo systemctl restart slurmdbd slurmd slurmctld
+ 1952  sinfo PARTITION=studentqos
+ 1953  exit
+ 1954  sudo apt-get install git-lfs
+ 1955  exit
+ 1956  ls
+ 1957  git status
+ 1958  exit
+ 1959  echo 1 > /proc/sys/vm/drop_caches
+ 1960  history
+ 1961  exit
+ 1962  ps aux --sort pcpu
+ 1963  ls
+ 1964  cd ../../../
+ 1965  history | grep sacct
+ 1966  sacctmgr show assoc | grep aha149
+ 1967  sacctmgr show assoc
+ 1968  sacctmgr create user name=aha149 account=students
+ 1969  sacctmgr show assoc | grep aha
+ 1970  systemctl restart slurmctld
+ 1971  ls
+ 1972  adduser aha149 sudo
+ 1973  whoami
+ 1974  cat /etc/sudoers
+ 1975  ls
+ 1976  cd home/
+ 1977  ls
+ 1978  cd aca205/
+ 1979  ls
+ 1980  ls -all
+ 1981  cd .ssh/
+ 1982  ls
+ 1983  cp authorized_keys
+ 1984  cat authorized_keys
+ 1985  cp authorized_keys ../../
+ 1986  cd ../../
+ 1987  ls
+ 1988  mv authorized_keys ../cmpt750_rsa.pub
+ 1989  cd ../
+ 1990  ls
+ 1991  ls -all
+ 1992  cat cmpt750_rsa.pub
+ 1993  ls -all
+ 1994  chmod ugo+rw cmpt750_rsa.pub
+ 1995  ls
+ 1996  ls /data/home/
+ 1997  history | grep sudo
+ 1998  history | grep cp
+ 1999  exit
+ 2000  history | grep cp
+ 2001  history | grep quota
+ 2002  history
+ 2003  history > ins

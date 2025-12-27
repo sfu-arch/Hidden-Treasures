@@ -97,12 +97,19 @@ inference of these models.
 - [MMA and WMMA](https://github.com/Bruce-Lee-LY/cuda_hgemm/tree/master/src/wmma), [Notes](https://bruce-lee-ly.medium.com/nvidia-tensor-core-getting-started-with-mma-ptx-programming-508e44a6cb7d)
 - [FAST GEMM 1](https://siboehm.com/articles/22/CUDA-MMM)
 - [FAST GEMM 2](https://alexarmbr.github.io/2024/08/10/How-To-Write-A-Fast-Matrix-Multiplication-From-Scratch-With-Tensor-Cores.html)
+- [Banking and Layout](https://veitner.bearblog.dev/making-matrix-transpose-really-fast-on-hopper-gpus/)
+- [Banking Basics](https://feldmann.nyc/blog/smem-microbenchmarks?utm_source=chatgpt.com)
+- [TMA Basics](https://yang-yifan.github.io/blogs/cute_tma/cute_tma.html)
+- [Algo Basics](https://yang-yifan.github.io/blogs/reg_tile/reg_tile.html)
+- [CuTE](https://yang-yifan.github.io/blogs/cute_layout/cute_layout.html)
+- [Dynamic Launch](https://yang-yifan.github.io/blogs/pdl/pdl.html)
+- [Code](https://github.com/Yang-YiFan/Yang-YiFan.github.io/tree/main/blogs)
 - [Advanced: CUDA graphs](https://pytorch.org/blog/accelerating-generative-ai-2/)
 # CUDA Alternatives and DSLs
 - [Triton](https://triton-lang.org/): A python embeded domain-specific language (DSL). It allows developers to write custom GPU kernels in a Python-like syntax, making it easier to optimize and parallelize computations for LLMs and other applications. Triton is particularly useful for implementing custom operations that are not available in standard libraries, enabling fine-tuned performance on specific hardware configurations.
 - [Modular](https://www.modular.com/): A platform that provides tools and infrastructure for building and deploying AI models, including LLMs. 
 - [Triton vs Modular](https://www.modular.com/blog/democratizing-ai-compute-part-7-what-about-triton-and-python-edsls)
-
+- [Maximize bandwidth and latency](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72683/)
 
 
 #### Pytorch: 
@@ -115,6 +122,7 @@ Both pytorch and cuda are super-sensitive to the version of the GPU driver and t
 [Pytoch docker](https://hub.docker.com/layers/pytorch/pytorch/2.7.1-cuda12.6-cudnn9-devel/images/sha256-639b8229ccfd8a3aa803cf49c33d6d6fe406750d79aaf723fe8c0eb1060d8cff)
 [Modern GPU Programming with CUDA](https://www.nvidia.com/en-us/on-demand/session/gtc25-s72449/)
 [GPU Embedded-DSLs](https://www.modular.com/blog/democratizing-ai-compute-part-7-what-about-triton-and-python-edsls)
+
 
 
 
