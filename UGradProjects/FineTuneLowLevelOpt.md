@@ -4,13 +4,13 @@
   - [Why This Beats a Software Internship](#why-this-beats-a-software-internship)
   - [Career Paths This Enables](#career-paths-this-enables)
 - [Fine-Tuning Small Language Models for High-Performance GPU Code Generation](#fine-tuning-small-language-models-for-high-performance-gpu-code-generation)
-- [**Project Summary**](#project-summary)
-- [**Research Objectives**](#research-objectives)
-- [**Student Responsibilities**](#student-responsibilities)
-- [**Anticipated Outcomes**](#anticipated-outcomes)
-- [**Required Qualifications**](#required-qualifications)
-- [**Preferred / Asset Qualifications**](#preferred--asset-qualifications)
-- [**Supervision \& Training Environment**](#supervision--training-environment)
+- [Project Summary](#project-summary)
+- [Research Objectives](#research-objectives)
+- [Student Responsibilities](#student-responsibilities)
+- [Anticipated Outcomes](#anticipated-outcomes)
+- [Required Qualifications](#required-qualifications)
+- [Preferred / Asset Qualifications](#preferred--asset-qualifications)
+- [Supervision \& Training Environment](#supervision--training-environment)
 - [📋 Milestones and Deliverables](#-milestones-and-deliverables)
 - [🎓 Learning Outcomes](#-learning-outcomes)
 - [🔗 References](#-references)
@@ -169,4 +169,5 @@ Through this project, you will develop expertise in:
 - [Kevin-32B: Multi-Turn RL for Writing CUDA Kernels](https://cognition.ai/blog/kevin-32b) - Cognition AI
 - [KernelBench: Benchmark for LLM Kernel Generation](https://scalingintelligence.stanford.edu/blogs/kernelbench/) - Stanford Scaling Intelligence
 - [Qwen2.5-Coder Technical Report](https://arxiv.org/abs/2409.12186) - Alibaba
-
+- [SFU-ARCH Helper](https://github.com/sfu-arch/Hidden-Treasures/tree/master/UGradProjects/Finetune)
+- [SFU-ARCH LLM Resources](https://github.com/sfu-arch/Hidden-Treasures/tree/master/LLMs)

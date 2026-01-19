@@ -4,7 +4,7 @@
  1007  ls
  1008  history | grep for
  1009  for i in `ls -1`; do cp .zshrc $i; done
- 1010  for i in `ls -1`; do cp /home/ubuntu/.zshrc $i; done
+ 1010  for i in `ls -1`; do cp /home/ubuntu/.zshrc $i; dones
  1011  ls
  1012  cd /data/home/
  1013  for i in `ls -1`; do cp /home/ubuntu/.zshrc $i; done
