@@ -1,4 +1,4 @@
-e# Software-Defined Vector Processing on Manycore Fabrics
+# Software-Defined Vector Processing on Manycore Fabrics
 ## gem5-mesh Custom Module Documentation
 
 This documentation covers the custom gem5 extensions implementing Software-Defined Vector Processing on Manycore Fabrics. The system enables a mesh of simple cores to operate as a configurable vector processor through CSR-based configuration.
