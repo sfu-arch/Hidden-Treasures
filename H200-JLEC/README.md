@@ -7,7 +7,7 @@ This document was put together to help students get up and running on the shared
   - [Status \& history](#status--history)
   - [Two things that trip people up](#two-things-that-trip-people-up)
   - [Why three environments, not one](#why-three-environments-not-one)
- - [Toch Setup](#torch-setup)
+- [Toch Setup](#torch-setup)
   - [Quick start](#quick-start)
   - [The CUDA-matching rule (the part your *managed* CUDA actually affects)](#the-cuda-matching-rule-the-part-your-managed-cuda-actually-affects)
   - [Topology rules for this box (bridged NVLink, no switch)](#topology-rules-for-this-box-bridged-nvlink-no-switch)
