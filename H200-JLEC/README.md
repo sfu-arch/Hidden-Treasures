@@ -6,8 +6,8 @@ This document was put together to help students get up and running on the shared
   - [Managing your own jobs](#managing-your-own-jobs)
   - [Status \& history](#status--history)
   - [Two things that trip people up](#two-things-that-trip-people-up)
-  [Why three environments, not one](#why-three-environments-not-one)
-  - [Layout](#layout)
+  - [Why three environments, not one](#why-three-environments-not-one)
+ - [Toch Setup](#torch-setup)
   - [Quick start](#quick-start)
   - [The CUDA-matching rule (the part your *managed* CUDA actually affects)](#the-cuda-matching-rule-the-part-your-managed-cuda-actually-affects)
   - [Topology rules for this box (bridged NVLink, no switch)](#topology-rules-for-this-box-bridged-nvlink-no-switch)
@@ -169,7 +169,7 @@ sacct -j 18 -o JobID,State,Elapsed,MaxRSS,AllocTRES%40
    considerate. For guaranteed exclusive access, use `--gres=gpu:h200:1`.
 
 
-# Pytorch setup.
+# Torch setup.
 
 This machine does not come preinstalled with pytorch and other bells and whistles for ML research. You have to setup your own environment. Using scripts below. A reproducible setup for **custom ops (Triton + CUDA C++)**, **LLM fine-tuning /
 training**, and **serving**, built on top of your *managed* CUDA toolkit and a
