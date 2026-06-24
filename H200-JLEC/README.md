@@ -6,7 +6,7 @@ This document was put together to help students get up and running on the shared
   - [Managing your own jobs](#managing-your-own-jobs)
   - [Status \& history](#status--history)
   - [Two things that trip people up](#two-things-that-trip-people-up)
-  - [Why three environments, not one](#why-three-environments-not-one)
+  [Why three environments, not one](#why-three-environments-not-one)
   - [Layout](#layout)
   - [Quick start](#quick-start)
   - [The CUDA-matching rule (the part your *managed* CUDA actually affects)](#the-cuda-matching-rule-the-part-your-managed-cuda-actually-affects)
@@ -189,7 +189,7 @@ compiled is ABI-locked to the torch it was built against, so it would then fail
 to load. Keeping serving in separate venvs means your kernels and your servers
 never fight. This is the single most important structural decision here.
 
-## Layout
+# Layout
 
 ```
 setup-dev.sh                 # build the llmdev env (detects your CUDA -> matched torch)
