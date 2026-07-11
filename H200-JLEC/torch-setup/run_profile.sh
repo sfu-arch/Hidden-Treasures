@@ -22,7 +22,7 @@ dram__throughput.avg.pct_of_peak_sustained_elapsed,\
 sm__pipe_tensor_op_hmma_cycles_active.avg.pct_of_peak_sustained_active"
 
 mkdir -p "$OUTDIR"
-
+#    --nvtx --nvtx-include "measure/" \\
 for OP in gemm  spmm sddmm_sampled sddmm_densemask; do
   echo "=== profiling $OP ==="
   sudo bash << EOF || echo "WARNING: ncu exited non-zero for $OP, continuing"
@@ -30,7 +30,6 @@ for OP in gemm  spmm sddmm_sampled sddmm_densemask; do
 module load LIB/CUDA/13.0
 source /localhome/ashriram/envs/llmdev/bin/activate
 /usr/local/cuda-13.0/bin/ncu --csv --log-file "$OUTDIR/$OP.csv" \\
-    --nvtx --nvtx-include "measure/" \\
     --metrics "$METRICS" \\
     --target-processes all \\
     "$PY" "$SCRIPT" profile --op "$OP" \\

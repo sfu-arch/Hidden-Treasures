@@ -72,6 +72,7 @@ NCU_METRICS = ",".join([M_TIME, M_BYTES, M_SM, M_DRAM, M_TENSOR])
 OPS = ["gemm", "spmm", "sddmm_sampled", "sddmm_densemask", "copy"]
 
 
+
 # --------------------------------------------------------------------------- #
 # mask families
 # --------------------------------------------------------------------------- #
@@ -220,7 +221,7 @@ def bench_point(M, K, N, density, mask_kind, dev, peak_tflops, args):
         except Exception as ex:
             print(f"{op:<26}{'--':>9}{'--':>10}{'--':>8}  unsupported: {ex}")
     if "sddmm_sampled" in res and "sddmm_densemask" in res:
-        win = "SAMPLED" if res["sddmm_sampled"] < res["sddmm_densemask"] else "DENSE+MASK"
+        win = "SAMPLED" if res["sddmm_sampled"] < res["sddmm_densemask"] else "+DENSEMASK"
         print(f"  -> SDDMM winner: {win}")
         return res["sddmm_sampled"] < res["sddmm_densemask"]
     return None

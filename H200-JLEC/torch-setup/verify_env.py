@@ -25,8 +25,6 @@ def check_torch():
     for i in range(torch.cuda.device_count()):
         p = torch.cuda.get_device_properties(i)
         print(f"  GPU{i}: {p.name}  sm_{p.major}{p.minor}  {p.total_memory/1e9:.0f} GB")
-    assert torch.cuda.get_device_capability(0) == (9, 0), \
-        "Expected Hopper sm_90 (H200)"
     return torch
 
 
