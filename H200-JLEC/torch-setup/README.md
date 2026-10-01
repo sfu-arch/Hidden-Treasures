@@ -119,3 +119,119 @@ CUDA_VISIBLE_DEVICES=0,1 python -m sglang.launch_server --model-path <model> --t
 - Python 3.12 is the default (broadest wheel coverage). Override with `PYVER=3.11`.
 - If you later add TensorRT-LLM or Torch-TensorRT, give it **its own** env too and
   pin torch to that release's support matrix — same isolation logic as vLLM/SGLang.
+
+
+## SPGEMM or SPMM
+
+Install uv, install requirements.txt
+
+
+Relevant files
+- download_datasets.py, gnn.py, spmm_mtx.py
+
+```
+# on cs-arch-32.cmpt.sfu.ca
+ module load LIB/CUDA/13.0
+python3 download_datasets.py --task spgemm --all
+python3 download_datasets.py --task spmm --all
+python3 download_datasets.py --task gnn --all
+python gnn.py timing --root . --all --F 256
+python3 spmm_mtx.py timing --ms-root HS --all
+python3 spmm_mtx.py timing --ms-root MS --all
+```
+
+### gnn.py vs spmm_mtx.py — same kernel, different semantics
+
+Both scripts call `torch.sparse.mm(CSR, dense)`, which hits the identical
+cuSPARSE code path. What differs is what the operands mean and how they're
+built:
+
+- **gnn.py — message passing on a graph.** `A` is the graph adjacency:
+  `edge_index` symmetrized (both directions concatenated), duplicates merged,
+  all values forced to 1.0 (structure-only). Always square
+  (`num_nodes x num_nodes`). `H` is a dense node-feature matrix
+  `(num_nodes, F)`. So `A @ H` computes, per node, the unweighted sum of its
+  neighbors' feature vectors — the aggregate step of one GCN-style layer
+  (minus normalization and the weight matrix). The irregular, usually
+  power-law degree distribution of these graphs is the workload's defining
+  feature.
+- **spmm_mtx.py — generic SpMM on SuiteSparse matrices.** `A` is the matrix
+  as the dataset provides it: possibly rectangular, not symmetrized by the
+  script (only the `.mtx` parser mirrors entries the file declares
+  symmetric), real values when a raw `.mtx` is present. `B` is a random
+  `(cols, K)` operand with no graph meaning. This measures SpMM as a
+  numerical kernel on scientific-computing sparsity patterns ("regular"
+  mesh/banded vs "power-law", per the `degree_type` tag).
+
+
+### What cuSPARSE actually does underneath
+
+`torch.sparse.mm(A_csr, H)` launches
+two kernels — `cusparse::csr_partition_kernel` then
+`cusparse::csrmm_alg2_kernel<..., long, long, float, ...>` — i.e. the
+generic-API `cusparseSpMM` with **CSR_ALG2**, int64 indices, fp32 values.
+
+**Dispatch.** PyTorch wraps the tensors in generic-API descriptors:
+`cusparseCreateCsr` with `CUSPARSE_INDEX_64I` (PyTorch keeps int64 indices)
+and `cusparseCreateDnMat` with row-major order (PyTorch dense layout), then
+`cusparseSpMM_bufferSize` + workspace alloc + `cusparseSpMM` with ALG2 — the
+variant NVIDIA recommends for row-major dense operands (default ALG1 is
+tuned for column-major).
+
+**Kernel 1 — `csr_partition_kernel` (load balancing).** Scans `indptr` and
+partitions work into tiles of roughly equal *nonzero count* rather than
+equal row count, writing tile boundaries into the workspace. Each thread
+block gets similar work regardless of row length; long hub rows in power-law
+graphs are split across blocks instead of serializing one block.
+
+**Kernel 2 — `csrmm_alg2_kernel` (the SpMM).** Each block processes its nnz
+partition against a tile of the F columns of H. Threads lie along
+consecutive columns of H/C, so reads of `H[j,:]` segments and writes of
+`C[i,:]` are coalesced. The sparse row's `(col_index, value)` pairs stream
+sequentially through shared memory. For each nonzero `(i,j)` the kernel
+gathers row `H[j,:]` — the random access whose locality is dictated entirely
+by the graph's column ordering. Products accumulate in registers; each
+`C[i,:]` is written once (beta=0, C never read).
+
+** Roofline
+
+ Per nonzero: `2F` flops vs 4 B value + 8 B
+int64 column index + up to `4F` B of gathered H-row on an L2 miss. With no
+reuse that is < 0.5 flop/byte — deep in the bandwidth-bound region. The only
+lever is **L2 reuse of H rows**: well-ordered mesh-like matrices (MS /
+"regular") hit lines already resident; power-law graphs with scattered
+neighborhoods thrash L2 and measured DRAM bytes approach the worst case.
+That single effect — L2 hit rate on the H gather — separates the dataset
+clusters far more than flop throughput. Note also that cuSPARSE accepts
+int32 indices (half the index traffic), but PyTorch sparse CSR standardizes
+on int64.
+
+### SpMM vs SpGEMM — what changes when H is sparse too
+
+`torch.sparse.mm` dispatches on operand layout; the dense-H case above is
+what makes it SpMM. The cases are entirely different algorithms:
+
+- **H dense → SpMM** (`csrmm_alg2`, both scripts here): output is dense with
+  known shape, allocated up front; cost is exactly `2*nnz(A)*F` flops;
+  performance governed by L2 reuse of H gathers. The right primitive for GNN
+  message passing, since node features genuinely are dense.
+- **H sparse → SpGEMM** (`cusparseSpGEMM`, benchmarked by spgemm_mtx.py):
+  output nnz is unknown until computed, so cuSPARSE runs a multi-phase
+  scheme (symbolic/work-estimation pass, allocation, numeric pass). The
+  inner loop is not gather-accumulate but *merging of sparse rows* — for
+  each nonzero `A[i,k]`, row `B[k,:]` is fetched and merged into row `i` via
+  hash tables / sorted merges in shared memory. Index-matching work
+  dominates; much of the runtime produces no flops. Flop count is
+  `2 * sum(products)`, which can wildly exceed output nnz — compression
+  ratio becomes a first-order performance variable that doesn't exist in
+  SpMM. Throughput lands an order of magnitude or more below SpMM on the
+  same matrix (compare spgemm_mtx.csv vs spmm_mtx.csv on shared datasets).
+- **A dense too → GEMM**: `torch.matmul` goes to cuBLAS, tensor cores light
+  up, and you get the roofline's compute ceiling (the `gemm` anchor).
+
+Hierarchy on the same hardware: dense GEMM (tensor cores, compute-bound) >>
+SpMM (CUDA cores, bandwidth-bound on gathers) >> SpGEMM (CUDA cores, bound
+by index-matching and irregular merges). Densifying A to use tensor cores
+only pays off above roughly 10–20% density — far denser than any of these
+graphs.
+
