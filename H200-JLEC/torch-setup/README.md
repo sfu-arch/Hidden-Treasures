@@ -138,6 +138,9 @@ python3 download_datasets.py --task gnn --all
 python gnn.py timing --root . --all --F 256
 python3 spmm_mtx.py timing --ms-root HS --all
 python3 spmm_mtx.py timing --ms-root MS --all
+# For scipy matrices AmazonProducts ogb, Reddit see
+python download_spmm.py --datasets OGBN RDT AMZ --outdir data
+python3 spgemm.py timing --indir data --datasets RDT
 ```
 
 ### gnn.py vs spmm_mtx.py — same kernel, different semantics
